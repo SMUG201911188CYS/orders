@@ -1,0 +1,29 @@
+{
+  "model": "gpt-image-1.5",
+  "quality": "high",
+  "output_format": "png",
+  "background": "transparent",
+  "default_source_size": "1024x1024",
+  "default_export_sizes": [
+    256,
+    128,
+    64
+  ],
+  "resize_filter": "nearest",
+  "style_prefix": "2D pixel art character portrait for a moody night-shift tactics game, hand-placed pixels on a strict grid, crisp hard edges with zero anti-aliasing, chunky readable forms, limited palette with dithering instead of gradients, bust-up framing, facing the viewer.",
+  "style_suffix": "Palette is locked to the game's own colors: night ground #0d0e14 and #181b26, ally teal #5fb7c4, phantom crimson #c8455f, brass #d9a441, skin #f7d7b4 with #d99a72 shadow. Keep the silhouette readable at 64px. Match the flat, slightly desaturated look of a late-90s handheld RPG portrait.",
+  "prompt_input": "D:/Claude/nan2026/orders/art/characters.jsonl",
+  "resolved_prompt_output": "D:/Claude/nan2026/orders/art/generated/characters_prompts.resolved.jsonl",
+  "generation_report": "D:/Claude/nan2026/orders/art/reports/generation.json",
+  "validation_report": "D:/Claude/nan2026/orders/art/reports/alpha_validation.json",
+  "postprocess_report": "D:/Claude/nan2026/orders/art/reports/postprocess.json",
+  "review_status_report": "D:/Claude/nan2026/orders/art/reports/review_status.json",
+  "review_session_report": "D:/Claude/nan2026/orders/art/reports/review_session.json",
+  "approved_export_report": "D:/Claude/nan2026/orders/art/reports/approved_export.json",
+  "needs_edit_report": "D:/Claude/nan2026/orders/art/reports/needs_edit.json",
+  "rejected_report": "D:/Claude/nan2026/orders/art/reports/rejected.json",
+  "contact_sheet": "D:/Claude/nan2026/orders/art/reports/contact_sheet.html",
+  "final_item_dir": "D:/Claude/nan2026/orders/art/portraits",
+  "approved_item_dir": "D:/Claude/nan2026/orders/art/portraits/final",
+  "image_gen_script": ""
+}

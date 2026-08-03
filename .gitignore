@@ -1,0 +1,41 @@
+# 실험 산출물 — 저장소에 둘 이유가 없다. 최종 채택본만 남긴다.
+# (아트 원본 97MB 중 실제로 쓰이는 건 v4 카드 아홉 장과 brief_v2 하나뿐이다)
+art/_*.png
+art/_*.md
+art/*.log
+
+# 채택되지 않은 생성 후보
+art/concepts/hero/hero_a.png
+art/concepts/hero/hero_b.png
+art/concepts/hero/hero_c.png
+art/concepts/hero/hero_composed.png
+art/concepts/hero/composed_*.png
+art/concepts/hero/group_*.png
+art/concepts/hero/brief_v1.png
+art/concepts/hero/brief_v3.png
+art/concepts/hero/brief_v4.png
+
+# 폐기된 이전 세대 아트. 최종본은 art/concepts/v4/ 아홉 장뿐이고,
+# 나머지 세대(v2·v3·루트의 char_*.png)와 화풍 탐색본은 게임이 쓰지 않는다.
+art/concepts/v2/
+art/concepts/v3/
+art/concepts/v3-uniform/
+art/concepts/char_*.png
+art/concepts/style_*.png
+art/concepts/probe_*.png
+art/concepts/v4_sheet*.png
+art/generated/
+art/reports/
+
+# 작업 부스러기
+art/out_*.md
+art/res_*.md
+art/*_result.md
+art/probe*.md
+index.bak.html
+_chars.txt
+contrast-preview.html
+font-preview.html
+fonts/
+.omc/
+.omx/
