@@ -26,6 +26,9 @@
   --node-a-bg:#153039; --node-f-bg:#301820; --node-n-bg:#2a2413;
   --hp-empty:#3d4557; --cut:#c9566d;
   --dead-line:#0b0d12; --dead-fill:#4a5266;
+  /* 위험 예고 — 개시 전에만 깔린다. 바닥보다 한 톤 붉되 유닛보다 어두워야
+     칸이 "칠해진 것"으로 읽히고 말이 놓인 것으로 오해되지 않는다. */
+  --danger:#2b1a22; --danger-edge:#7d3a4a;
   --wall:#39405c; --wall-top:#5a6488;
   /* 타입 스케일 — 역할 5단. 비율 1.2, 최하단이 --fs-root.
      15개로 흩어져 있던 값을 역할로 묶었다. 여기 없는 크기는 쓰지 않는다.
@@ -243,6 +246,14 @@ canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:100%;max-widt
 .pc[aria-selected=true]{border-color:var(--ink-3);background:var(--panel-2)}
 .pc.on{border-left:3px solid var(--ally);padding-left:calc(.7rem - 2px)}
 .pc.on .pn::after{content:' ✓';color:var(--ally)}
+/* 이미 교대를 마친 대원. 지우지 않고 남겨 둔다 —
+   "쓸 수 있었는데 이미 썼다"가 보여야 편성이 결정이었다는 게 남는다. */
+.pc.spent{opacity:.42;cursor:default}
+.pc.spent .pn{color:var(--ink-3);text-decoration:line-through}
+.pc.spent .pr{color:var(--ink-3) !important}
+.pc.spent:hover{border-color:var(--line)}
+.picknight{font-family:var(--mono);font-size:var(--fs-1);letter-spacing:.12em;
+  color:var(--gold);margin:-.4rem 0 .9rem}
 
 /* ── 상세 ── */
 #pickdetail{display:grid;grid-template-columns:16rem minmax(0,1fr);gap:18px;
@@ -505,7 +516,9 @@ canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:100%;max-widt
 
 <section id="pick" hidden>
   <h2>오늘 밤 신호소를 지킬 대원 셋을 선택하세요</h2>
-  <p class="picksub">이름을 누르면 자세히 볼 수 있습니다. 셋을 고르면 각자에게 지시서를 한 장씩 씁니다.</p>
+  <p class="picksub">이름을 누르면 자세히 볼 수 있습니다. 셋을 고르면 각자에게 지시서를 한 장씩 씁니다.<br>
+    <b>한 번 나간 대원은 다음 밤에 다시 나갈 수 없습니다.</b> 세 밤에 걸쳐 아홉 명을 한 번씩 씁니다.</p>
+  <p id="picknight" class="picknight"></p>
 
   <div id="pickbody">
     <!-- 왼쪽: 아홉 명 줄. 오른쪽: 지금 보고 있는 한 명 -->
@@ -617,7 +630,8 @@ const TH={
   nodeA:T('node-a-bg'), nodeF:T('node-f-bg'), nodeN:T('node-n-bg'),
   hpEmpty:T('hp-empty'), cut:T('cut'),
   wall:T('wall'), wallTop:T('wall-top'),
-  deadLine:T('dead-line'), deadFill:T('dead-fill')
+  deadLine:T('dead-line'), deadFill:T('dead-fill'),
+  danger:T('danger'), dangerEdge:T('danger-edge')
 };
 
 
@@ -961,7 +975,9 @@ const ROSTER=[
 
 /* 역할군 전용 카드. 스테이지 손패에 한 장씩 더 얹힌다.
    역할이 다르면 쓸 수 있는 줄도 달라야 "왜 이 셋을 골랐나"가 의미를 갖는다. */
-const ROLE_CARD={'전위':'block','사수':'kite','지원':'mend'};
+/* 지원만 두 장인 것은 실수가 아니다. 지원은 직접 싸우지 않으므로 네 줄 중 몇 줄을
+   남을 살리는 데 내줄지가 그 역할의 전부다. 고를 게 많아야 그 결정이 성립한다. */
+const ROLE_CARD={'전위':['block'],'사수':['kite'],'지원':['mend','rescue']};
 
 /* 9명 중 오늘 밤 나가는 3명. 편성 화면이 생기면 이 배열만 바꾸면 된다.
    기본값은 지금까지 밸런스를 검증해 온 린·하나·유이다. */
@@ -1062,6 +1078,22 @@ const CARDS={
       // 비율로 가장 위험한 쪽부터. 체력 7인 하나의 1칸과 체력 2인 미오의 1칸은 무게가 다르다.
       if(near.length)return {k:'heal',t:near.sort((a,b)=>a.hp/a.max-b.hp/b.max)[0]};
       const g=[]; for(const v of hurt) for(const c of adj(v)) if(!blocked(s,c,u)) g.push(c);
+      if(!g.length)return null;
+      const m=stepToward(s,u,g); return m?{k:'mv',...m}:null;
+    }},
+  /* 구조 — 사망을 되돌릴 수 있게 만드는 유일한 줄.
+     쓰러짐이 플레이어가 못 막는 사건이라 거기에 대가를 물리면 그냥 세금이 된다.
+     대신 되돌릴 수단을 주고, 그 수단을 네 줄 중 한 자리와 맞바꾸게 한다.
+     한 사람당 한 밤에 한 번뿐인 이유는 무한 소생이 16턴을 늘려버리기 때문이다. */
+  rescue:{name:'구조', line:'쓰러진 아군이 2칸 안에 있으면 체력 절반으로 일으켜 옆으로 데려옵니다', when:'쓰러진 아군이 2칸 안에 있으면', then:'절반 체력으로 일으켜 내 옆으로 · 아니면 한 칸 다가감',
+    plan(s,u){
+      const down=s.units.filter(v=>v.side===u.side&&v.hp<=0&&!v.rescued);
+      if(!down.length)return null;
+      /* 사거리 2. 인접(1)으로 재 보니 구조 줄까지 도달한 턴의 73.6%가 걸어가기만 하다
+         끝났다 — 치료가 사거리 1이던 시절과 똑같은 병이다. 닿는 칸이 4개에서 12개로 는다. */
+      const near=down.filter(v=>md(v,u)<=2);
+      if(near.length)return {k:'rescue',t:near.sort((a,b)=>a.i-b.i)[0]};
+      const g=[]; for(const v of down) for(const c of adj(v)) if(!blocked(s,c,u)) g.push(c);
       if(!g.length)return null;
       const m=stepToward(s,u,g); return m?{k:'mv',...m}:null;
     }},
@@ -1287,6 +1319,27 @@ function actUnit(s,u,order,ev){
       }
       return;
     }
+    /* 구조 — 쓰러진 자리로 붙어서 체력 1로 일으킨다. px/py 를 지금 자리로 맞춰야
+       되살아난 프레임에서 예전 좌표로부터 미끄러져 들어오지 않는다. */
+    if(act.k==='rescue'){
+      const t=act.t;
+      /* 체력 1로 일으켰더니 74.4%가 같은 턴에 다시 쓰러졌다(실측).
+         최대 체력 7인 하나조차 91%였다 — 체력이 아니라 '자리'가 원인이다.
+         쓰러진 곳은 적이 붙어 있던 곳이라 거기서 세우면 바로 다시 맞는다.
+         그래서 둘을 같이 고친다: 절반까지 올리고, 구조자 옆으로 데리고 나온다. */
+      t.hp=Math.max(2,Math.ceil(t.max/2));
+      t.gone=false; t.rescued=true;
+      const foes=alive(s).filter(v=>v.side!==u.side);
+      const spots=adj(u).filter(c=>!blocked(s,c,t)&&!unitAt(s,c));
+      if(spots.length&&foes.length){
+        const far=c=>Math.min(...foes.map(v=>Math.abs(v.x-c.x)+Math.abs(v.y-c.y)));
+        const best=spots.reduce((a,b)=>far(b)>far(a)?b:a);
+        if(far(best)>far(t)){ t.x=best.x; t.y=best.y; }
+      }
+      t.px=t.x; t.py=t.y;
+      ev.push({t:'rescue',u,v:t,card:order[fired],slot:fired});
+      return;
+    }
     if(act.k==='wait'){ if(pass===0) ev.push({t:'wait',u,card:order[fired],slot:fired}); return; }
     if(act.k==='mv'){
       // 붙잡힌 적은 못 움직인다. 공격은 여전히 한다 — 무력화가 아니라 발이 묶인 것이다.
@@ -1359,8 +1412,10 @@ const isPer=o=>Array.isArray(o)&&Array.isArray(o[0]);
    엔진 쪽에 두는 이유는 검증 하네스가 같은 손패를 봐야 하기 때문이다.
    화면과 측정이 서로 다른 카드로 돌면 측정값이 거짓이 된다. */
 function handFor(si,k){
-  const S=STAGES[si], rc=ROLE_CARD[ROSTER[ACTIVE[k]].role];
-  return rc&&S.hand.indexOf(rc)<0 ? S.hand.concat([rc]) : S.hand.slice();
+  const S=STAGES[si], rc=ROLE_CARD[ROSTER[ACTIVE[k]].role]||[];
+  const h=S.hand.slice();
+  for(const c of rc) if(h.indexOf(c)<0) h.push(c);
+  return h;
 }
 
 function makeState(si,orders){
@@ -1371,7 +1426,7 @@ function makeState(si,orders){
   S.ally.forEach(([x,y],k)=>{const r=ROSTER[ACTIVE[k]];
     units.push({i:k,side:'ally',key:r.key,name:r.name,hp:r.hp,max:r.hp,t:r.t,role:r.role,
                 speed:r.speed,range:r.range,atk:r.atk||1,cd:r.cd||0,cdLeft:0,
-                heal:r.heal||0,dmg:1,x,y,px:x,py:y,gone:false,
+                heal:r.heal||0,dmg:1,x,y,px:x,py:y,gone:false,rescued:false,
                 order:(per?(per[k]||[]):shared).slice()});});
   const fhp=S.foeHp||2;
   /* 허상의 공격력은 2다. 아군 체력이 역할군 개편으로 2~3에서 2~7로 올랐는데
@@ -1420,6 +1475,44 @@ let carried=null;
 
 function cellXY(x,y){return [PAD+x*CELL, PAD+y*CELL];}
 
+/* 다음 턴 허상이 때릴 수 있는 칸. 난수가 없으므로 이건 예측이 아니라 계산이다.
+   걸어갈 수 있는 칸을 speed 만큼 넓힌 뒤(벽만 고려 — 유닛은 그 사이 움직인다)
+   거기서 range 안을 전부 담는다. 유닛을 무시하는 쪽이 넓게 잡히는데,
+   경고는 넓게 틀리는 편이 안전하다. 안 위험하다고 거짓말하면 안 된다. */
+/* 6x6 대각 점 무늬. 한 번 만들어 재사용한다 — 칸마다 픽셀을 찍으면 매 프레임 낭비다. */
+let _dangerPat=null;
+function dangerPattern(){
+  if(_dangerPat) return _dangerPat;
+  const c=document.createElement('canvas'); c.width=c.height=6;
+  const g=c.getContext('2d');
+  g.fillStyle=TH.danger;     g.fillRect(0,0,6,6);
+  g.fillStyle=TH.dangerEdge;
+  g.fillRect(0,0,1,1); g.fillRect(2,2,1,1); g.fillRect(4,4,1,1);
+  _dangerPat=ctx.createPattern(c,'repeat');
+  return _dangerPat;
+}
+
+function dangerTiles(s){
+  const out=new Set();
+  for(const f of alive(s)){
+    if(f.side!=='foe')continue;
+    let reach=[{x:f.x,y:f.y}]; const seen=new Set([f.x+','+f.y]);
+    for(let step=0;step<f.speed;step++){
+      const nq=[];
+      for(const p of reach) for(const c of adj(p)){
+        const k=c.x+','+c.y;
+        if(seen.has(k)||isWall(s,c))continue;
+        seen.add(k); nq.push(c);
+      }
+      if(!nq.length)break;
+      reach=reach.concat(nq);
+    }
+    for(const p of reach) for(let y=0;y<H;y++) for(let x=0;x<W;x++)
+      if(Math.abs(p.x-x)+Math.abs(p.y-y)<=f.range) out.add(x+','+y);
+  }
+  return out;
+}
+
 function draw(){
   ctx.fillStyle=TH.bg; ctx.fillRect(0,0,cv.width,cv.height);
   if(!st)return;
@@ -1436,6 +1529,19 @@ function draw(){
     ctx.fillStyle=TH.wall;    ctx.fillRect(cx,cy,CELL-1,CELL-1);
     ctx.fillStyle=TH.wallTop; ctx.fillRect(cx,cy,CELL-1,3);
     ctx.fillRect(cx,cy,1,CELL-1);
+  }
+  /* 위험 예고 — 개시 전에만 깐다. 판이 돌기 시작하면 매 턴 바뀌는 데다,
+     화면이 이미 움직이는 중에 붉은 칸까지 깜빡이면 뭘 봐야 할지 알 수 없다.
+     무늬는 대각 점선이다. 처음엔 모서리 눈금을 썼는데 거점 표시와 똑같이 생겨서
+     둘이 같은 종류로 읽혔다. 패턴은 페이지 좌표로 이어져서 붙은 칸들이 한 덩어리로 보인다. */
+  if(st.turn===0&&!anim.playing){
+    const pat=dangerPattern();
+    for(const key of dangerTiles(st)){
+      const [gx,gy]=key.split(',').map(Number);
+      if(isWall(st,{x:gx,y:gy}))continue;
+      const [cx,cy]=cellXY(gx,gy);
+      ctx.fillStyle=pat; ctx.fillRect(cx,cy,CELL-1,CELL-1);
+    }
   }
   // 거점
   for(const n of st.nodes){
@@ -1461,6 +1567,17 @@ function draw(){
   const k=Math.min(1,anim.t);
   const ease=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
   const hits=new Set(anim.ev.filter(e=>e.t==='atk').map(e=>e.v));
+  /* 쓰러진 아군의 자리. 구조 카드가 향하는 목표라 판에서 지워버리면
+     지원이 왜 저쪽으로 걸어가는지 설명할 그림이 없다. 이미 구조된 사람은 안 그린다. */
+  for(const u of st.units){
+    if(u.side!=='ally'||u.hp>0||u.rescued||anim.t<1)continue;
+    const [cx,cy]=cellXY(u.x,u.y);
+    ctx.fillStyle=TH.deadLine;
+    ctx.fillRect(cx+4,cy+13,CELL-9,4);
+    ctx.fillStyle=TH.deadFill;
+    ctx.fillRect(cx+5,cy+14,CELL-11,2);
+    ctx.fillRect(cx+6,cy+11,3,3);          // 머리
+  }
   for(const u of st.units){
     if(u.hp<=0&&u.gone&&anim.t>=1)continue;
     const [tx,ty]=cellXY(u.x,u.y), [fx,fy]=cellXY(u.px,u.py);
@@ -1615,6 +1732,16 @@ const ICONS={
         'AAA...AAA',
         '.........',
         '.........'],
+  // 쓰러진 몸(아래 회색) 위로 끌어올리는 화살표
+  rescue:['....N....',
+          '...NNN...',
+          '..N.N.N..',
+          '....N....',
+          '....N....',
+          '.........',
+          '.ddddddd.',
+          '..d...d..',
+          '.........'],
   // 나 ─▶ 다친 아군 (오른쪽이 반 칸 = 체력 절반 이하)
   cover:['.........',
          '.........',
@@ -1733,7 +1860,9 @@ function paintSquad(){
     const t=document.createElement('span'); t.className='tr'; t.textContent=r.trait; d.appendChild(t);
     const h=document.createElement('span'); h.className='hp';
     h.style.color=u.hp>0?TH.ally:TH.hpEmpty;
-    h.textContent=u.hp>0?'♥'.repeat(u.hp)+'·'.repeat(u.max-u.hp):'전선 이탈';
+    // 구조가 아직 가능한 사람과 완전히 빠진 사람은 다른 상태다. 같은 글자로 쓰면 안 된다.
+    h.textContent = u.hp>0 ? '♥'.repeat(u.hp)+'·'.repeat(u.max-u.hp)
+                  : (u.rescued ? '전선 이탈' : '쓰러짐 · 구조 가능');
     d.appendChild(h);
     el.appendChild(d);
   }
@@ -1777,6 +1906,7 @@ function logTurn(ev){
     else if(e.t==='heal')push(e.u,'<b class="n">'+e.v.name+' 회복 +'+(e.n||1)+'</b>');
     else if(e.t==='lamp')push(e.u,'<b class="n">거점 2배</b>');
     else if(e.t==='bound')push(e.u,'<span class="c">붙잡혀 못 움직임</span>');
+    else if(e.t==='rescue')push(e.u,'<b class="n">'+e.v.name+' 일으킴</b>');
     if(e.slot!==undefined&&!byUnit.get(e.u).slot) byUnit.get(e.u).slot=e.slot;
     if(e.card) byUnit.get(e.u).card=e.card;
   }
@@ -1845,16 +1975,33 @@ function finish(){
     ? (last?'세 밤을 모두 넘겼습니다. 당신이 정한 것은 움직임이 아니라 읽는 순서였습니다.'
            :'이 순서가 다음 밤에도 통할지는 모릅니다. 판이 바뀌면 조건이 맞는 줄도 바뀝니다.')
     : '아래 기록에 누가 몇 번 줄을 읽었는지 남아 있습니다. 순서를 바꿔 다시 내려보내세요.';
-  $('bb').textContent = won?(last?'처음부터':'다음 밤'):'다시 쓰기';
-  $('bb').onclick=()=>{ if(!won) loadStage(stageIdx,true);
-                        else if(last){carried=null;loadStage(0,false);}
-                        else loadStage(stageIdx+1,true); };
+  $('bb').textContent = won?(last?'처음부터':'대원 교대'):'다시 쓰기';
+  /* 이긴 밤은 반드시 편성 화면을 거친다. 오늘 나간 셋이 여기서 소모되고,
+     다음 밤은 남은 사람 중에서 골라야 하기 때문이다.
+     진 밤은 소모하지 않는다 — 재도전이 명단을 갉아먹으면 시행착오가 벌이 된다. */
+  $('bb').onclick=()=>{
+    if(!won){ loadStage(stageIdx,true); return; }
+    used=used.concat(ACTIVE);
+    if(last){ used=[]; carried=null; nextStage=0; }
+    else nextStage=stageIdx+1;
+    $('banner').classList.remove('on');
+    picked=[]; backToPick();
+  };
   /* 진 밤에는 편성으로 돌아갈 길을 반드시 남긴다.
      전수로 재 보니 84개 편성 중 둘(하나·호타루·시즈 / 아오이·호타루·시즈)은
      밤1에서 13,824개 조합이 전부 진다. 편성을 못 바꾸면 그 둘을 고른 사람은
      지시서를 아무리 고쳐도 영영 못 넘긴다 — 어려운 게 아니라 갇힌 것이다. */
+  /* 남은 대원이 정확히 셋이면 편성을 바꿀 여지가 없다(밤3이 그렇다).
+     그때는 편성으로 보내봐야 같은 셋이 강제되므로, 처음부터 다시 도는 길을 준다.
+     이게 없으면 밤1·2에서 잘못 배분한 사람은 밤3에서 영영 못 나간다. */
+  const canRepick = (9-used.length) > 3;
   $('bre').hidden = won;
-  $('bre').onclick=()=>{ $('banner').classList.remove('on'); backToPick(); };
+  $('bre').textContent = canRepick ? '편성 바꾸기' : '처음부터 다시';
+  $('bre').onclick=()=>{
+    $('banner').classList.remove('on');
+    if(!canRepick){ used=[]; carried=null; nextStage=0; }
+    backToPick();
+  };
   $('banner').classList.add('on');
 }
 
@@ -1944,6 +2091,13 @@ const HERO="data:image/webp;base64,UklGRs79AABXRUJQVlA4IML9AADQUwOdASoAA7ABPm0uk
    HERO 선언 뒤에서 꽂는다 — const 는 선언 전 구간이 TDZ 라 위에서 건드리면 예외가 난다. */
 $('heroimg').src=HERO;
 
+/* 3밤 × 3명 = 아홉. 한 번 나간 대원은 다시 못 나간다.
+   이 한 줄이 편성 화면을 장식에서 이 게임의 가장 큰 결정으로 바꾼다 —
+   밤1에 린을 태우면 밤3엔 린이 없다. 사망에 대가를 물리지 않고도
+   "누구를 언제 쓸 것인가"라는 자원 관리가 생긴다.
+   used 는 밤을 '넘겼을 때'만 늘어난다. 다시 도전하는 밤은 소모가 아니다. */
+let used=[];
+let nextStage=0;                 // 편성 화면이 끝나면 들어갈 밤
 let picked=ACTIVE.slice();
 let inspect=picked[0]!==undefined?picked[0]:0;   // 지금 상세에 띄운 사람
 
@@ -1985,26 +2139,35 @@ function paintDetail(){
 function paintPick(){
   const el=$('picklist'); el.innerHTML='';
   ROSTER.forEach((r,i)=>{
+    const spent=used.includes(i);
     const b=document.createElement('button');
-    b.className='pc'+(picked.includes(i)?' on':'');
+    b.className='pc'+(picked.includes(i)?' on':'')+(spent?' spent':'');
     b.setAttribute('data-role',r.role);
     b.setAttribute('role','option');
     b.setAttribute('aria-selected',i===inspect?'true':'false');
     b.setAttribute('aria-pressed',picked.includes(i)?'true':'false');
+    b.disabled=spent;
     const c=document.createElement('canvas'); c.width=c.height=32;
-    drawPortrait(c.getContext('2d'),r.key,0,0);
+    // 이미 나갔던 대원은 초상도 회색으로 — 목록에서 한눈에 걸러져야 한다
+    drawPortrait(c.getContext('2d'),r.key,0,0,
+      spent?new Proxy({},{get:(_,g)=>g==='.'?null:(g==='L'?TH.deadLine:TH.deadFill)}):null);
     b.appendChild(c);
     b.insertAdjacentHTML('beforeend',
       '<span class="pn">'+r.name+'</span>'+
-      '<span class="pr">'+r.role+'</span>');
+      '<span class="pr">'+(spent?'교대 완료':r.role)+'</span>');
     // 누르면 '본다'. 넣고 빼는 건 상세의 버튼 하나로만 한다 —
     // 한 번의 클릭이 두 가지를 하면 둘러보다가 편성이 바뀐다.
     b.onclick=()=>{ inspect=i; paintPick(); };
     el.appendChild(b);
   });
   $('pickcount').textContent=picked.length+' / 3';
-  $('pickwho').textContent=picked.length
-    ? picked.map(i=>ROSTER[i].name).join(' · ') : '아직 아무도 선택하지 않았습니다';
+  const left=9-used.length;
+  $('pickwho').textContent = picked.length
+    ? picked.map(i=>ROSTER[i].name).join(' · ')
+    : (used.length ? '남은 대원 '+left+'명 중 셋을 선택하세요'
+                   : '아직 아무도 선택하지 않았습니다');
+  $('picknight').textContent = STAGES[nextStage]
+    ? STAGES[nextStage].name.replace(/^\s*(\d)\s+/,'$1밤 · ') : '';
   $('pickgo').disabled=picked.length!==3;
   paintDetail();
 }
@@ -2024,7 +2187,9 @@ $('pickgo').onclick=()=>{
   if(picked.length!==3)return;
   ACTIVE=picked.slice();
   $('pick').hidden=true;
-  document.getElementById('game').classList.add('on'); loadStage(0,false); };
+  document.getElementById('game').classList.add('on');
+  // 첫 밤이면 백지에서, 이어지는 밤이면 지난밤 종이를 들고 들어간다
+  loadStage(nextStage,nextStage>0); };
 
 /* 진 뒤 편성 화면으로 돌아간다. 예약된 턴을 먼저 끊는 건 loadStage 와 같은 이유다 —
    턴 사이 틈에 눌리면 새 판이 한 턴 밀린 채로 시작한다.
@@ -2034,7 +2199,11 @@ function backToPick(){
   clearTimeout(turnTimer); turnTimer=null;
   anim.playing=false; anim.t=1; anim.ev=[];
   document.getElementById('game').classList.remove('on');
-  picked=ACTIVE.slice(); $('pick').hidden=false; paintPick();
+  /* 지난 편성을 그대로 되살리되, 이미 교대를 마친 사람은 걸러낸다.
+     안 거르면 방금 소모된 셋이 선택된 채로 떠서 개시가 막힌다. */
+  picked=ACTIVE.filter(i=>!used.includes(i));
+  inspect=picked.length?picked[0]:ROSTER.findIndex((_,i)=>!used.includes(i));
+  $('pick').hidden=false; paintPick();
 }
 
 /* 검사 하네스는 start 만 누르고 게임 화면을 기대한다. 편성은 기본값으로 통과시킨다. */
@@ -2304,6 +2473,19 @@ window.__art=function(){
    실제 click()으로 손패 배치 → 재정렬 → 개시 → 종료 화면까지 밟는다. */
 /* 탭을 실제로 눌러 세 사람 지시서를 다 채운다. 개시 조건이 3인분이 됐으므로
    이걸 통과하지 못하면 탭이든 개시 조건이든 하나가 깨진 것이다. */
+/* 이긴 밤의 다음 버튼은 이제 편성 화면으로 간다 — 아홉을 세 밤에 한 번씩 쓰는 규칙 때문이다.
+   검사도 사람과 같은 길을 지나야 하므로, 남은 대원 중 앞에서 셋을 집어 개시한다.
+   편성 화면이 안 떴으면 아무것도 안 하고 false 를 돌려준다(패배 경로는 그대로 같은 밤). */
+function autoPick(){
+  if($('pick').hidden) return false;
+  picked=[];
+  for(let i=0;i<ROSTER.length&&picked.length<3;i++) if(!used.includes(i)) picked.push(i);
+  paintPick(); $('pickgo').click();
+  return true;
+}
+/* 배너 → (편성) → 다음 밤을 한 번에. 검사에서 이 두 줄이 늘 붙어 다닌다. */
+function nextNight(){ $('bb').click(); return autoPick(); }
+
 function fillAllChars(){
   const tabs=()=>[...document.querySelectorAll('#chartabs .ctab')];
   for(let k=0;k<3;k++){
@@ -2352,7 +2534,7 @@ window.__ui=function(){
   ok($('log').children.length>0,'로그에 턴 기록 남음 ('+$('log').children.length+'줄)');
 
   const prev=order.slice();
-  $('bb').click();                                   // "다음 밤"
+  nextNight();                                       // "대원 교대" → 편성 → 다음 밤
   ok(stageIdx===1,'배너 → 2밤으로 진행');
   ok(prev.every((c,i)=>order[i]===c),'어젯밤 순서가 그대로 이월됨 ('+order.join('>')+')');
   /* 밤2에 늘어나는 카드는 스테이지가 더해 주는 한 장 + 역할 전용 한 장이다.
@@ -2383,9 +2565,11 @@ window.__fuzz=async function(steps,seed){
   const trace=[];
 
   const inv=()=>{
-    const e=[], S=STAGES[stageIdx], put=order.filter(Boolean);
-    if(put.length+hand.length!==S.hand.length)
-      e.push('카드 수 불일치 — 슬롯 '+put.length+' + 손패 '+hand.length+' ≠ 손패총량 '+S.hand.length);
+    /* 손패 총량은 이제 스테이지 손패가 아니라 handFor 다 — 역할 전용 카드가 얹히고,
+       지원은 두 장이라 대원마다 길이가 다르다. S.hand 로 재면 늘 틀린다. */
+    const e=[], put=order.filter(Boolean), total=handFor(stageIdx,sel).length;
+    if(put.length+hand.length!==total)
+      e.push('카드 수 불일치 — 슬롯 '+put.length+' + 손패 '+hand.length+' ≠ 손패총량 '+total);
     if(new Set(put.concat(hand)).size!==put.length+hand.length)
       e.push('카드 중복 — '+put.concat(hand).join(','));
     const hole=order.indexOf(null);
@@ -2403,7 +2587,7 @@ window.__fuzz=async function(steps,seed){
     // 대원별 카드 보존: 각자 슬롯+손패 = 그 밤의 손패 총량
     orders.forEach((o,k)=>{
       const mine=[...o.filter(Boolean),...hands[k]].sort().join(',');
-      const all=STAGES[stageIdx].hand.slice().sort().join(',');
+      const all=handFor(stageIdx,k).slice().sort().join(',');
       if(mine!==all) e.push('대원'+(k+1)+' 카드 보존 깨짐 ['+mine+'] ≠ ['+all+']');
     });
     // 인과 검사: 개시를 누른 적 없는데 턴이 흘렀다면 어딘가 진행이 새고 있다
@@ -2416,7 +2600,7 @@ window.__fuzz=async function(steps,seed){
 
   const actions=()=>{
     if($('banner').classList.contains('on'))
-      return [{n:'배너버튼',f:async()=>{ $('bb').click(); ranSinceLoad=false; }}];
+      return [{n:'배너버튼',f:async()=>{ nextNight(); ranSinceLoad=false; }}];
     const a=[];
     document.querySelectorAll('.hand-card').forEach((b,k)=>{
       if(!b.disabled) a.push({n:'손패'+k,f:async()=>b.click()}); });
@@ -2481,7 +2665,7 @@ window.__tc=async function(){
   ok(!stall,'TC1 한 판이 끝까지 진행됨 '+(stall||st.over+' '+st.score.ally+':'+st.score.foe+' '+dbg()));
   ok($('banner').classList.contains('on'),'TC1 종료 배너 표시');
   const wasWin=st.over==='win';
-  $('bb').click(); await sleep(300);           // 예약된 턴이 있으면 이 사이에 터진다
+  nextNight(); await sleep(300);               // 예약된 턴이 있으면 이 사이에 터진다
   ok(st.turn===0,'TC1 배너 통과 후 턴 0 유지 (실제 '+st.turn+')');
   ok(order.filter(Boolean).length===4,'TC1 지난밤 순서 이월 ('+order.filter(Boolean).join('>')+')');
   ok($('run').disabled===!(order.filter(Boolean).length===4&&st.turn===0),
@@ -2521,7 +2705,7 @@ window.__tc=async function(){
   $('run').click(); const stall2=await pump(30);
   ok(!stall2,'TC5 두 번째 판 완주 '+(stall2||dbg()));
   const win2=st.over==='win', from=stageIdx;
-  $('bb').click(); await sleep(300);
+  nextNight(); await sleep(300);
   ok(st.turn===0,'TC5 다음 화면 진입 시 턴 0 (실제 '+st.turn+')');
   ok(win2?stageIdx===from+1:stageIdx===from,
      'TC5 '+(win2?'승리 → 다음 밤 진입':'패배 → 같은 밤 재시작')+' (밤 '+(stageIdx+1)+')');
@@ -2547,7 +2731,7 @@ window.__tc=async function(){
      'TC7 지우기 → 카드가 손패로 전부 돌아옴 ('+hands.map(h=>h.length).join('/')+')');
   fillAllChars();
   $('run').click(); await pump(30);
-  $('bb').click(); await sleep(200);
+  nextNight(); await sleep(200);
   ok(orders.some(o=>o.filter(Boolean).length===4),'TC7 밤이 끝난 뒤에도 종이는 이월됨');
 
   /* TC6  진 밤에서 편성 화면으로 되돌아가는 길
@@ -2555,7 +2739,10 @@ window.__tc=async function(){
      그 둘을 고른 사람은 게임에 갇힌다. 그래서 이건 편의가 아니라 필수 경로다. */
   if(stageIdx!==0) loadStage(0,false);
   // 확실히 지는 순서를 직접 꽂는다 (밤1 · 린하나유이 기준 2:30 패배, 엔진으로 확인함)
-  const LOSE=['hold','seize','strike','retreat'];   // 새 수치 기준: 11:4 로 앞서다 11턴에 전멸
+  /* 구조 카드가 들어오면서 옛 픽스처('hold>seize>strike>retreat')가 이기는 순서로 바뀌었다.
+     전수로 다시 골랐다 — 밤1·린하나유이 120조합 중 74개가 패배이고, 이건 그중
+     가장 명확한 축에 든다: 4:14 로 벌어지며 11턴에 전멸한다. */
+  const LOSE=['seize','hold','block','strike'];
   for(let k=0;k<3;k++){ orders[k]=LOSE.slice(); hands[k]=[]; }
   sel=0; order=orders[0]; hand=hands[0]; paintAll();
   $('run').click(); await pump(30);
@@ -2626,6 +2813,10 @@ if(q.get('test')){ const r=window.__test();
   document.body.style.cssText='display:block';   // flex 중앙정렬이면 긴 출력이 위로 잘린다
   document.body.innerHTML='<pre style="color:#e8e6df;font:13px monospace;padding:20px">'+
     JSON.stringify(r,null,2)+'</pre>'; }
+/* #board=1 — 편성을 건너뛰고 판만 띄운다(개시 전, 턴 0).
+   auto 는 턴수가 필요해서 0턴 화면을 찍을 수 없다. 위험 예고는 개시 전에만 보이므로
+   그 화면을 헤드리스로 확인할 문이 따로 필요하다. #who 와 같이 쓴다. */
+if(q.get('board')) window.__enterGame();
 /* ?auto=<턴수>&s=<스테이지>&o=<카드,카드,…> — 특정 판의 특정 턴을 정지 화면으로 띄운다 */
 if(q.get('auto')){ window.__enterGame();
   const si=+(q.get('s')||0); if(si) loadStage(si,false);
