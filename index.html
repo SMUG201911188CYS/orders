@@ -561,6 +561,9 @@ canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:100%;max-widt
 .foe-slot.hidden span:last-child{color:var(--ink-3);font-family:var(--mono);font-size:var(--fs-1);letter-spacing:.2em}
 .foe-slot.shown{border-color:var(--foe-line);background:var(--foe-bg)}
 .foe-slot.shown span:last-child{color:var(--foe)}
+/* 변형 규칙 한 줄. 카드가 아니므로 상자를 주지 않고 주석처럼 밑에 붙인다. */
+#foetwist{margin-top:2px;padding:.3rem .55rem;font-family:var(--mono);
+          font-size:var(--fs-1);color:var(--foe);border-left:2px solid var(--foe-line)}
 
 /* 부대 */
 .squad{display:flex;flex-direction:column;gap:.3rem}
@@ -727,7 +730,7 @@ canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:100%;max-widt
     <div class="panel">
       <div class="phead"><span>허상의 지시서</span><span id="revcount"></span></div>
       <!-- 설명을 달지 않는다. 한 판만 돌려 보면 한 칸씩 열리는 걸 스스로 알게 된다. -->
-      <div class="pbody"><div id="foeslots"></div></div>
+      <div class="pbody"><div id="foeslots"></div><div id="foetwist"></div></div>
     </div>
 
     <!-- 규칙은 매 턴 보는 것이 아니라 궁금할 때 한 번 보는 것이다.
@@ -1383,6 +1386,16 @@ STAGE_SETS.B=[
   intro:'질주체가 둘의 걸음으로 옵니다. 포체의 사거리에 서면 그 자리에서 맞습니다.',
   hand:['strike','seize','retreat','hold','chase','rally'],
   foe:['seize','strike','hold','chase'],
+  /* 마지막 밤에만 붙는 변형 규칙 — 11턴(22턴의 절반)에 허상이 지시서를 갈아 든다.
+     바뀌는 것은 앞 두 줄의 자리뿐이다. 전반은 거점부터 먹고 후반은 아군부터 친다.
+     새 카드가 없으니 가르칠 것도 없는데 상대의 성격은 뒤집힌다.
+
+     후보 측정 (대원별 / 셋이 같은 줄, 교체 없음은 12% / 3% d3):
+       추격 전환 공격>추격>…  8% / 14% d2   ← 공통줄이 뚫리고 깊이가 얕아진다
+       수비 전환 주둔>공격>…  17% / 12%     ← 둘 다 쉬워진다
+       채택      공격>점령>…  8% /  2% d3   ← 양쪽 다 어려워지고 깊이는 유지
+     두 후보의 차이는 2번 칸 하나다. 추격은 1번뿐 아니라 2번에 두어도 판을 푼다. */
+  foe2:['strike','seize','hold','chase'], switchTurn:11,
   ally:[[3,5],[4,6],[2,5]], foes:[[6,0,'rush'],[1,0,'gun'],[0,1,'hulk']],
   /* 거점 셋을 서로 다른 방향으로 흩었다. 둘이 같은 쪽에 몰려 있으면 한 사람이
      둘을 맡고 나머지 하나가 남아돈다(배분 0). 세 방향이면 셋이 갈라져야 한다.
@@ -1569,6 +1582,18 @@ function respawn(s,ev){
 function runTurn(s){
   const ev=[];
   s.turn++;
+  /* 변형 규칙 — 허상이 밤 중간에 지시서를 갈아 든다(스테이지에 foe2·switchTurn 이 있을 때만).
+     지금까지 배운 것은 "허상의 네 줄을 읽고 그에 맞춰 짠다"였다. 여기서는 그 전제가
+     한 번 깨진다 — 앞 절반과 뒤 절반이 다른 상대이므로 한쪽에만 맞춘 지시서는 반쪽만 통한다.
+     난수가 아니다. 몇 턴에 무엇으로 바뀌는지 고정이고, 개시 전에 화면에 적혀 있다. */
+  const SS=STAGES[s.si];
+  if(SS&&SS.foe2&&s.turn===SS.switchTurn){
+    for(const u of s.units) if(u.side==='foe') u.order=SS.foe2.slice();
+    s.foeOrder=SS.foe2.slice();
+    s.reveal=[false,false,false,false];
+    s.switched=true;
+    ev.push({t:'switch'});
+  }
   respawn(s,ev);
   for(const u of s.units) if(u.hp>0){ u.px=u.x; u.py=u.y; if(u.cdLeft>0) u.cdLeft--; }
   for(const u of s.units) if(u.hp>0) actUnit(s,u,u.order,ev);
@@ -2128,6 +2153,12 @@ function paintFoe(){
     el.appendChild(d);
   });
   $('revcount').textContent=n+' / 4';
+  /* 변형 규칙은 숨기지 않는다 — 개시 전에 적혀 있어야 계산에 넣을 수 있다.
+     교체가 지나면 문구만 과거형으로 바뀐다. 높이는 두 문구가 같은 한 줄이라 변하지 않는다. */
+  const S=STAGES[st.si], tw=$('foetwist');
+  tw.textContent=S.foe2?(st.switched?S.switchTurn+'턴 · 순서가 바뀌었다'
+                                    :S.switchTurn+'턴에 순서가 바뀐다'):'';
+  tw.style.display=S.foe2?'':'none';
 }
 
 /* 야근조 목록이 곧 지시서 탭이다 — 누구의 지시서를 쓰는지 고르는 자리와
@@ -2207,6 +2238,13 @@ function logTurn(ev){
   head.className='lg-turn';
   head.textContent='TURN '+String(st.turn).padStart(2,'0');
   el.appendChild(head);
+  /* 지시서 교체는 특정 대원에게 일어난 일이 아니므로 lg-note 로 따로 적는다.
+     이 한 줄이 없으면 갑자기 적 움직임이 달라진 이유를 화면에서 찾을 수 없다. */
+  if(ev.some(e=>e.t==='switch')){
+    const d=document.createElement('div'); d.className='lg-note';
+    d.innerHTML='<b class="e">허상이 지시서를 바꿨다</b>';
+    el.appendChild(d);
+  }
 
   const byUnit=new Map();
   const push=(u,html)=>{ if(!byUnit.has(u)) byUnit.set(u,[]); byUnit.get(u).push(html); };
@@ -2809,6 +2847,32 @@ window.__qa=async function(){
     ACTIVE=save;
   }
 
+  /* 변형 규칙 — 예고한 턴에 실제로 갈리는지, 적 전원이 새 줄을 드는지.
+     교체가 조용히 안 걸리면 밤3 난이도가 통째로 어긋나므로 엔진 쪽에서 못 박는다. */
+  {
+    const S3=STAGES[2];
+    if(S3&&S3.foe2){
+      const s=makeState(2,[0,1,2].map(()=>S3.hand.slice(0,4)));
+      while(s.turn<S3.switchTurn-1&&!s.over) runTurn(s);
+      const before=s.reveal.filter(Boolean).length;
+      const sw=runTurn(s).some(x=>x.t==='switch')?s.turn:0;
+      /* 교체 턴에도 적은 행동한다. 그 턴이 끝나면 그 턴에 발동한 칸들은 다시 열려 있다
+         — 적이 셋이면 최대 셋까지. "전부 닫혀야 한다"고 적으면 통과할 수 없으므로
+         "닫혔다가 이번 턴 것만 다시 열렸는가"로 본다. */
+      const after=s.reveal.filter(Boolean).length;
+      const nFoe=s.units.filter(u=>u.side==='foe'&&u.hp>0).length;
+      ok(sw===S3.switchTurn,'밤3 '+S3.switchTurn+'턴에 지시서 교체가 걸림 (걸린 턴 '+sw+')');
+      ok(s.foeOrder.join('>')===S3.foe2.join('>'),'교체 뒤 허상 지시서가 foe2 로 바뀜');
+      ok(s.units.filter(u=>u.side==='foe').every(u=>u.order.join('>')===S3.foe2.join('>')),
+         '적 전원이 새 지시서를 든다');
+      ok(after<before&&after<=nFoe,'교체 뒤 다시 읽어야 함 (공개 '+before+' → '+after+')');
+      const s2=makeState(0,[0,1,2].map(()=>STAGES[0].hand.slice(0,4)));
+      let any=false;
+      while(s2.turn<MAXTURN&&!s2.over) if(runTurn(s2).some(x=>x.t==='switch')) any=true;
+      ok(!any,'밤1 에는 교체가 걸리지 않음');
+    }
+  }
+
   const r={결과:bad?'실패 '+bad+'건':'전부 통과',항목:out,
            엔진발동:aud.length,로그줄:rows.length};
   document.title=(bad?'QA-FAIL ':'QA-PASS ')+r.결과;
@@ -2879,7 +2943,11 @@ function nextNight(){ $('bb').click(); return autoPick(); }
 const WIN_ORDER=[
   ['retreat','strike','hold','seize'],
   ['strike','seize','retreat','chase'],
-  ['strike','seize','retreat','chase']
+  /* 밤3은 변형 규칙이 붙으면서 밤2와 같은 줄로는 더 이상 이기지 못한다(32:22 패).
+     공통줄 승리는 360 중 6뿐이고 그중 다섯이 30:29 접전이라, 픽스처로는 34:25 로
+     가장 여유 있는 이 줄을 쓴다. 스테이지를 손보면 다시 뽑을 것 —
+     tools 에서 perm(cfg.hand,4) 중 playPer(cfg,[o,o,o]) 가 이기는 것. */
+  ['retreat','strike','seize','chase']
 ];
 
 /* seq 를 주면 그 순서로, 안 주면 손패 앞에서부터 채운다.
