@@ -341,8 +341,8 @@ canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:100%;max-widt
    카드에선 3배(27px). 이름 글자와 키를 맞춰야 이름보다 먼저 눈에 들어온다.
    로그에선 1배(9px) — 여기선 "무슨 카드였나"를 색으로만 확인하면 된다. */
 .cico{width:27px;height:27px;image-rendering:pixelated;vertical-align:-7px;margin-right:.42rem}
-.lg-card .cico{width:9px;height:9px;vertical-align:0;margin-right:.28rem}
-.foe-slot .cico{width:18px;height:18px;vertical-align:-4px;margin-right:.32rem}
+.lg-card .cico{width:12px;height:12px;vertical-align:-2px;margin-right:.28rem}
+.foe-slot .cico{width:24px;height:24px;vertical-align:-6px;margin-right:.32rem}
 /* 진 밤에만 뜨는 두 번째 길. 주 행동(다시 쓴다)보다 약하게 보여야 한다. */
 #bre{display:block;margin:.7rem auto 0;border:1px solid var(--rule);
   padding:.34rem .8rem;color:var(--ink-2);font-size:var(--fs-2)}
@@ -421,8 +421,9 @@ canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:100%;max-widt
 #slots .slot{aspect-ratio:1;display:grid;place-items:center;align-content:center;gap:2px;
   padding:.85rem .1rem .95rem;position:relative;margin-bottom:0;min-height:0;overflow:hidden}
 #slots .slot .num{left:0;right:0;top:.18rem;text-align:center;font-size:9px}
-/* 이름이 빠진 자리를 그림과 스왑 버튼이 나눠 가진다. 아이콘 4배 = 36px. */
-#slots .slot .cico{width:36px;height:36px;margin:0;vertical-align:0}
+/* 슬롯은 "무엇을 넣었나"를 확인하는 자리라 원본 크기(24px, 1배)로 충분하다.
+   번호와 스왑 버튼이 위아래를 쓰므로 여기서 더 키우면 서로 밟는다. */
+#slots .slot .cico{width:24px;height:24px;margin:0;vertical-align:0}
 #slots .slot .nm{font-size:11px;letter-spacing:0;white-space:nowrap;line-height:1.1}
 #slots .slot:not(.empty) .nm{position:absolute;width:1px;height:1px;overflow:hidden;
   clip:rect(0 0 0 0);white-space:nowrap}
@@ -468,7 +469,8 @@ canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:100%;max-widt
   gap:3px;padding:.25rem;margin-bottom:0;text-align:center}
 /* 아이콘 원본이 9px 이라 정수 배율로만 키운다. 5배 = 45px.
    비정수 배율은 화질을 잃고 용량만 는다. */
-#hand .hand-card .cico{width:45px;height:45px;margin:0;vertical-align:0}
+/* 원본이 24px 이 되었다. 정수 배율만 쓴다 — 손패는 고르는 자리라 2배(48px). */
+#hand .hand-card .cico{width:48px;height:48px;margin:0;vertical-align:0}
 /* 이름 글자는 화면에서 뺀다 — 그림만 남는다. 무슨 카드인지는 손을 올리면
    아래 상세 칸이 말해 준다. 텍스트 자체는 남긴다(하네스·스크린리더용). */
 #hand .hand-card .tmpnm{position:absolute;width:1px;height:1px;overflow:hidden;
@@ -1769,119 +1771,146 @@ const ro=w=>{const c=w.charCodeAt(w.length-1)-0xAC00;
    판 위의 어휘를 그대로 줄인 그림을 쓴다 — 파랑=아군, 빨강=허상, 금색=거점, 회색=이동.
    여덟 장이 "왼쪽에 누가 있고 오른쪽에 누가 있고 사이에 뭐가 일어나는가"로 전부 갈린다.
    9x9 인 이유는 홀수라야 가운데 한 칸이 생겨서 대칭 도형이 흐트러지지 않기 때문이다. */
-const ICON_PAL={A:'#6cc2cf',F:'#e87b8e',N:'#e0ae4d',d:'#aab0be'};
-const ICONS={
-  // 나 ─ 충돌 ─ 적
-  strike:['.........',
-          '....N....',
-          'AAA.N.FFF',
-          'AAA.N.FFF',
-          'AAANNNFFF',
-          'AAA.N.FFF',
-          'AAA.N.FFF',
-          '....N....',
-          '.........'],
-  // 나 ─▶ 거점
-  seize:['.........',
-         '.........',
-         'AAA.d..N.',
-         'AAA.d..N.',
-         'AAA..dNNN',
-         'AAA.d..N.',
-         'AAA.d..N.',
-         '.........',
-         '.........'],
-  // 나 ◀─ 적 (적을 등지고 물러난다)
-  retreat:['.........',
-           '.........',
-           'AAA..dFFF',
-           'AAA..dFFF',
-           'AAA.d.FFF',
-           'AAA..dFFF',
-           'AAA..dFFF',
-           '.........',
-           '.........'],
-  // 거점 위에 서 있다
-  hold:['.........',
-        '..AAAAA..',
-        '..AAAAA..',
-        '..AAAAA..',
-        '..AAAAA..',
-        '..AAAAA..',
-        '.NNNNNNN.',
-        '..N...N..',
-        '.........'],
-  // 나 ─▶ 적
-  chase:['.........',
-         '.........',
-         'AAA.d.FFF',
-         'AAA.d.FFF',
-         'AAA..dFFF',
-         'AAA.d.FFF',
-         'AAA.d.FFF',
-         '.........',
-         '.........'],
-  // 나 ▶◀ 아군 (가운데로 모인다)
-  rally:['.........',
-         '.........',
-         'AAA...AAA',
-         'AAA...AAA',
-         'AAAdNdAAA',
-         'AAA...AAA',
-         'AAA...AAA',
-         '.........',
-         '.........'],
-  // 거점 ─ 나 ─ 적 (사이에 선다)
-  block:['.........',
-         '.N.AAAFFF',
-         '.N.AAAFFF',
-         'NNNAAAFFF',
-         'NNNAAAFFF',
-         'NNNAAAFFF',
-         '.N.AAAFFF',
-         '.N.AAAFFF',
-         '.........'],
-  // 붙은 적에게서 한 발 물러난다 (적이 가까이 붙어 있는 것이 후퇴와 다른 점)
-  kite:['.........',
-        '.........',
-        'AAA.dFFF.',
-        'AAA.dFFF.',
-        'AAAd.FFF.',
-        'AAA.dFFF.',
-        'AAA.dFFF.',
-        '.........',
-        '.........'],
-  // 나 ─ 십자 ─ 아군 (치료)
-  mend:['.........',
-        '....N....',
-        'AAA.N....',
-        'AAANNNAAA',
-        'AAA.N.AAA',
-        'AAA...AAA',
-        'AAA...AAA',
-        '.........',
-        '.........'],
-  // 쓰러진 몸(아래 회색) 위로 끌어올리는 화살표
-  rescue:['....N....',
-          '...NNN...',
-          '..N.N.N..',
-          '....N....',
-          '....N....',
-          '.........',
-          '.ddddddd.',
-          '..d...d..',
-          '.........'],
-  // 나 ─▶ 다친 아군 (오른쪽이 반 칸 = 체력 절반 이하)
-  cover:['.........',
-         '.........',
-         'AAAd...F.',
-         'AAAd.....',
-         'AAA.d.AAA',
-         'AAAd..AAA',
-         'AAAd..AAA',
-         '.........',
-         '.........']
-};
+const ICON_PAL={A:'#6cc2cf',a:'#3f8c99',F:'#e87b8e',f:'#a1505f',
+                N:'#e0ae4d',n:'#96742e',d:'#aab0be',D:'#5b6478'};
+/* 24×24 카드 그림. 24줄 × 11장을 손으로 적는 대신 조각을 조합한다 —
+   같은 요소(아군·적·거점)가 카드마다 같은 자리에 같은 크기로 서야
+   열한 장을 나란히 놓았을 때 "무엇이 다른가"가 눈에 들어온다.
+
+   읽는 법은 9px 시절 그대로다. 왼쪽이 나, 오른쪽이 대상, 가운데가 둘 사이에
+   일어나는 일. 색이 곧 대상이다 — 청록 아군 / 붉은 적 / 금색 거점·효과. */
+const ICONS=(()=>{
+  const S=24;
+  const grid=()=>Array.from({length:S},()=>Array(S).fill('.'));
+  const stamp=(g,x,y,rows,map)=>rows.forEach((r,j)=>[...r].forEach((ch,i)=>{
+    if(ch==='.')return;
+    const X=x+i, Y=y+j; if(X<0||X>=S||Y<0||Y>=S)return;
+    g[Y][X]=map[ch]||ch;
+  }));
+
+  /* 사람 하나. 머리와 몸이 붙은 8×11 실루엣 — 24px 에서 "누군가"로 읽히는
+     최소 크기다. 더 줄이면 블록이 되고, 더 키우면 둘을 못 세운다. */
+  const BODY=['..1111..',
+              '.111111.',
+              '.122111.',
+              '.111111.',
+              '..1111..',
+              '...11...',
+              '.1111111',
+              '11111111',
+              '11111111',
+              '.11..11.',
+              '.11..11.'];
+  /* 반쪽 몸 — 실루엣은 그대로 두고 아래 절반만 어둡게. 다리를 지워 보았더니
+     48px 에서 집결과 구분이 안 됐다. 체력바가 줄어든 것처럼 색으로 가른다. */
+  const HURT=['..1111..',
+              '.111111.',
+              '.122111.',
+              '.111111.',
+              '..1111..',
+              '...22...',
+              '.2222222',
+              '22222222',
+              '22222222',
+              '.22..22.',
+              '.22..22.'];
+  /* 쓰러진 몸 — 눕히면 서 있는 것과 한눈에 갈린다. */
+  const DOWN=['...........',
+              '...........',
+              '..111111...',
+              '.11111111..',
+              '.112211111.',
+              '.111111111.',
+              '..1111111..'];
+  /* 거점. 마름모는 판 위의 거점 칸과 같은 인상을 준다. */
+  const NODE=['...11...',
+              '..1111..',
+              '.111111.',
+              '11111111',
+              '11111111',
+              '.111111.',
+              '..1111..',
+              '...11...'];
+  const ARROW_R=['..1.....',
+                 '..11....',
+                 '11111111',
+                 '..11....',
+                 '..1.....'];
+  const ARROW_L=['.....1..',
+                 '....11..',
+                 '11111111',
+                 '....11..',
+                 '.....1..'];
+  const ARROW_U=['...11...',
+                 '..1111..',
+                 '.111111.',
+                 '11111111',
+                 '...11...',
+                 '...11...',
+                 '...11...'];
+  /* 충돌 — 부딪히는 지점에 박히는 불꽃. 공격에만 쓴다. */
+  const CLASH=['..1..1..',
+               '.1.11.1.',
+               '...11...',
+               '.111111.',
+               '11111111',
+               '.111111.',
+               '...11...',
+               '.1.11.1.',
+               '..1..1..'];
+  /* 십자 — 치료. 회복 기호는 만국 공통이라 설명이 필요 없다. */
+  const CROSS=['...11...',
+               '...11...',
+               '...11...',
+               '11111111',
+               '11111111',
+               '...11...',
+               '...11...',
+               '...11...'];
+
+  const ALLY={1:'A',2:'a'}, FOE={1:'F',2:'f'}, GOLD={1:'N',2:'n'}, DIM={1:'d',2:'D'};
+  const UY=7;           // 사람이 서는 높이. 열한 장 전부 같은 바닥을 쓴다
+  const L=1, R=15;      // 왼쪽 나, 오른쪽 대상
+  const MID=8;          // 가운데 동작이 놓이는 자리
+
+  const I={};
+  const make=fn=>{ const g=grid(); fn(g); return g.map(r=>r.join('')); };
+  const me   =(g,x=L)=>stamp(g,x,UY,BODY,ALLY);
+  const foe  =(g,x=R)=>stamp(g,x,UY,BODY,FOE);
+  const ally =(g,x=R)=>stamp(g,x,UY,BODY,ALLY);
+  const hurt =(g,x=R)=>stamp(g,x,UY,HURT,ALLY);
+  const node =(g,x,y=UY+2)=>stamp(g,x,y,NODE,GOLD);
+  const arrR =(g,x=MID,y=UY+4,m=DIM)=>stamp(g,x,y,ARROW_R,m);
+  const arrL =(g,x=MID,y=UY+4,m=DIM)=>stamp(g,x,y,ARROW_L,m);
+
+  // 1 공격 — 나와 적이 맞붙고 그 사이에서 부딪힌다
+  I.strike=make(g=>{ me(g,0); foe(g,16); stamp(g,MID,UY+3,CLASH,GOLD); });
+  // 2 점령 — 대상이 거점(금색)
+  I.seize =make(g=>{ me(g); arrR(g); node(g,15); });
+  // 3 후퇴 — 적이 멀리 있고, 나는 등지고 물러난다
+  I.retreat=make(g=>{ me(g,2); arrL(g,8); foe(g,17); });
+  // 4 주둔 — 수직. 거점을 밟고 그 위에 선다
+  I.hold  =make(g=>{ stamp(g,8,2,BODY,ALLY); stamp(g,8,14,NODE,GOLD); });
+  // 5 추격 — 대상이 적(붉은색). 점령과 색으로 갈린다
+  I.chase =make(g=>{ me(g); arrR(g); foe(g); });
+  /* 6 집결 — 「누군가에게 간다」 셋(추격·집결·엄호)은 화살표를 같은 자리에 두고
+     대상만 바꾼다. 붉은 적이면 추격, 멀쩡한 아군이면 집결, 반쪽 아군이면 엄호.
+     양방향 화살표를 쓰면 모이는 게 아니라 흩어지는 것으로 읽힐 수 있다. */
+  I.rally =make(g=>{ me(g); arrR(g); ally(g); });
+  // 7 저지 — 세 요소 수평. 내가 거점과 적 사이에 낀다
+  I.block =make(g=>{ stamp(g,0,UY+2,NODE,GOLD); me(g,9); foe(g,17); });
+  /* 8 거리두기 — 적이 몸에 닿아 있고, 물러날 방향은 바깥(왼쪽)이다.
+     후퇴는 [나 ←화살표 적(멀리)], 이쪽은 [←화살표 나|적(붙음)].
+     둘을 가르는 것은 적과의 간격과 화살표가 어디에 서 있느냐다. */
+  I.kite  =make(g=>{ arrL(g,0,UY+4); me(g,8); stamp(g,16,UY,BODY,FOE); });
+  // 9 치료 — 서 있는 아군에게 금색 십자
+  I.mend  =make(g=>{ me(g,0); ally(g,16); stamp(g,MID,UY+2,CROSS,GOLD); });
+  // 10 구조 — 누운 회색 몸을 금색 화살표가 끌어올린다
+  I.rescue=make(g=>{ stamp(g,7,3,ARROW_U,GOLD); stamp(g,6,14,DOWN,DIM); });
+  // 11 엄호 — 대상이 반쪽(체력 절반). 집결과 갈리는 지점이 이것
+  I.cover =make(g=>{ me(g); arrR(g); hurt(g); });
+  return I;
+})();
 /* 한 번 그려서 데이터 URI 로 굳힌다. paintHand 는 자주 도는데 매번 캔버스를
    여덟 개 새로 만들 이유가 없다. 외부 파일도 안 생기니 링크 하나로 도는 조건도 그대로다. */
 const iconURL=(()=>{ const cache={};
@@ -2569,8 +2598,11 @@ window.__qa=async function(){
   const noIcon=Object.keys(CARDS).filter(k=>!ICONS[k]);
   ok(!noIcon.length,'카드 '+Object.keys(CARDS).length+'장 전원 아이콘 있음'+
      (noIcon.length?' — 없음: '+noIcon.join(','):''));
-  const badIcon=Object.keys(ICONS).filter(k=>ICONS[k].length!==9||ICONS[k].some(r=>r.length!==9));
-  ok(!badIcon.length,'아이콘 전부 9x9'+(badIcon.length?' — 어긋남: '+badIcon.join(','):''));
+  /* 격자 크기 자체보다 "열한 장이 전부 같은 정사각"인 것이 중요하다.
+     하나만 크기가 어긋나면 카드마다 확대 배율이 달라져 그 장만 흐려진다. */
+  const ICO_N=ICONS.strike.length;
+  const badIcon=Object.keys(ICONS).filter(k=>ICONS[k].length!==ICO_N||ICONS[k].some(r=>r.length!==ICO_N));
+  ok(!badIcon.length,'아이콘 전부 '+ICO_N+'x'+ICO_N+(badIcon.length?' — 어긋남: '+badIcon.join(','):''));
   const noShot=ROSTER.filter(r=>!(SHOT[r.key]&&SHOT[r.key].u)).map(r=>r.name);
   ok(!noShot.length,'아홉 명 전원 전신 샷 있음'+(noShot.length?' — 없음: '+noShot.join(','):''));
   const noText=ROSTER.filter(r=>!(ABILITY[r.key]||[]).length||!LORE[r.key]).map(r=>r.name);
