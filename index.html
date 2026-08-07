@@ -163,14 +163,20 @@ body::after{
    화면이 해상도마다 달라지면 플레이어가 보는 것과 시연 영상이 달라진다. */
 /* width 고정이라야 판 폭이 640px 로 확정된다. min-width 로는 가운데 1fr 이
    남는 공간을 먹어 창 크기마다 판이 달라진다 — 아트 스펙을 못 정하게 된다. */
+/* 세 열이 같은 바닥에서 끝나야 화면이 닫힌 것으로 보인다. stretch 로 두고
+   남는 세로는 기록이 가져간다 — 좌측에서 유일하게 길어져도 되는 것이다. */
 #game{display:none;width:var(--page-w);margin:0 auto;
       grid-template-columns:var(--col-l) minmax(0,1fr) var(--col-r);
-      gap:var(--col-gap);align-items:start}
+      gap:var(--col-gap);align-items:stretch}
 #game.on{display:grid}
+#refcol{display:flex;flex-direction:column}
+#logpanel{flex:1 1 auto;display:flex;flex-direction:column;min-height:9rem}
+#logpanel .pbody{flex:1;min-height:0;display:flex}
 #refcol,#writecol,#game>main{min-width:0}
 /* 열 스크롤을 걸지 않는다 — 내용은 전부 그대로 보인다.
    세로가 넘치는 문제는 스크롤로 감추지 않고, 넣는 양을 줄여서 푼다. */
-#log{overflow-y:auto}
+/* 기록은 열이 끝나는 곳까지 늘어난다. 넘치는 줄만 자체 스크롤에 맡긴다. */
+#log{flex:1;min-height:0;overflow-y:auto}
 
 .panel{background:var(--panel);border:1px solid var(--rule)}
 .phead{
@@ -484,9 +490,23 @@ canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:100%;max-widt
 /* 손패는 공용 · 역할 전용 두 무리로 나뉜다. 전용 줄에 금빛 테를 둘러
    "이건 이 대원만 쓸 수 있다"를 글자보다 먼저 읽게 한다.
    지원만 전용이 두 장이라, 무리의 크기 차이가 곧 역할의 차이가 된다. */
-.handlabel{font-family:var(--mono);font-size:var(--fs-1);color:var(--ink-3);
-  letter-spacing:.11em;text-transform:uppercase;margin:.55rem 0 .3rem}
+.handlabel{display:flex;justify-content:space-between;align-items:center;
+  font-family:var(--mono);font-size:var(--fs-1);color:var(--ink-3);
+  letter-spacing:.11em;text-transform:uppercase;margin:.55rem 0 .3rem;min-height:1.2rem}
 .handlabel:first-child{margin-top:0}
+/* 카드가 넉 장을 넘으면 좌우로 넘긴다. 화살표는 라벨 줄 끝에 붙어 자리를 새로 안 먹는다. */
+.hnav{display:flex;align-items:center;gap:5px;letter-spacing:0}
+.hnav button{font:inherit;font-size:9px;font-family:var(--mono);line-height:1.3;
+  background:var(--panel-2);color:var(--ink-2);border:1px solid var(--rule);
+  border-radius:2px;padding:1px 5px;cursor:pointer}
+.hnav button:hover:not(:disabled){color:var(--ink);border-color:var(--gold)}
+.hnav button:disabled{opacity:.3;cursor:default}
+.hnav .pg{font-size:9px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+/* 카드를 다 쓰면 내용이 사라지지만 상자는 그대로 있어야 한다 —
+   높이가 줄면 아래 상세 칸이 위로 튀어 올라온다.
+   두 줄(라벨+카드) × 2 무리가 꽉 찼을 때의 높이(실측 203px)에 맞춘다.
+   이보다 작게 잡으면 카드를 놓는 순간 그 차이만큼 화면이 움찔한다. */
+#hand{min-height:12.8rem}
 .handrow.own .hand-card{border-color:#6b5426}
 .handrow.own .hand-card:hover:not(:disabled){border-color:var(--gold)}
 
@@ -2032,9 +2052,15 @@ function paintSlots(ev){
 
 function compact(){ const f=order.filter(Boolean); order=[f[0]||null,f[1]||null,f[2]||null,f[3]||null]; }
 
+/* 한 줄에 넉 장. 넘치면 두 줄로 쌓지 않고 좌우로 넘긴다 —
+   줄이 늘면 아래 것들이 그만큼 밀려 내려가고, 그 흔들림이 매 밤 달라진다.
+   페이지는 다시 그려도 남아야 한다(카드를 놓을 때마다 paintHand 가 돈다). */
+const HAND_PER=4;
+const handPage={};
 function paintHand(){
   const el=$('hand'); el.innerHTML='';
-  if(!hand.length){ el.innerHTML='<div class="note" style="margin:0">카드를 모두 배치했습니다.</div>'; return; }
+  if(!hand.length){ el.innerHTML='<div class="note" style="margin:0">카드를 모두 배치했습니다.</div>';
+                    showCard(null); return; }
   const mkCard=id=>{
     const b=document.createElement('button');
     b.className='hand-card';
@@ -2053,16 +2079,30 @@ function paintHand(){
      "역할마다 쓸 수 있는 줄이 다르다"는 사실이 목록 모양 자체로 드러난다.
      지원은 직접 싸우지 않으므로 네 줄 중 몇 줄을 남 살리는 데 쓸지가 그 역할의 전부다. */
   const role=ROSTER[ACTIVE[sel]].role, own=new Set(ROLE_CARD[role]||[]);
-  const group=(ids,label,cls)=>{
+  const group=(ids,label,cls,key)=>{
     if(!ids.length)return;
-    const h=document.createElement('div'); h.className='handlabel'; h.textContent=label;
+    const pages=Math.ceil(ids.length/HAND_PER);
+    /* 카드를 놓으면 장수가 줄어 마지막 페이지가 사라질 수 있다. 그때 빈 페이지에
+       머물면 손패가 통째로 비어 보인다 — 범위를 벗어나면 끌어당긴다. */
+    let p=Math.min(handPage[key]||0,pages-1); handPage[key]=p;
+    const h=document.createElement('div'); h.className='handlabel';
+    h.innerHTML='<span>'+label+'</span>';
+    if(pages>1){
+      const nav=document.createElement('span'); nav.className='hnav';
+      nav.innerHTML='<button data-d="-1"'+(p===0?' disabled':'')+' aria-label="이전 카드">◀</button>'
+                   +'<span class="pg">'+(p+1)+' / '+pages+'</span>'
+                   +'<button data-d="1"'+(p>=pages-1?' disabled':'')+' aria-label="다음 카드">▶</button>';
+      nav.querySelectorAll('button').forEach(b=>b.onclick=()=>{
+        handPage[key]=p+(+b.dataset.d); paintHand(); });
+      h.appendChild(nav);
+    }
     el.appendChild(h);
     const row=document.createElement('div'); row.className='handrow'+(cls?' '+cls:'');
-    for(const id of ids) row.appendChild(mkCard(id));
+    ids.slice(p*HAND_PER,(p+1)*HAND_PER).forEach(id=>row.appendChild(mkCard(id)));
     el.appendChild(row);
   };
-  group(hand.filter(id=>!own.has(id)),'공용','');
-  group(hand.filter(id=>own.has(id)),role+' 전용','own');
+  group(hand.filter(id=>!own.has(id)),'공용','','com');
+  group(hand.filter(id=>own.has(id)),role+' 전용','own','own');
   showCard(null);
 }
 
