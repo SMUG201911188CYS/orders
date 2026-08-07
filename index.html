@@ -171,12 +171,11 @@ body::after{
 #game.on{display:grid}
 #refcol{display:flex;flex-direction:column}
 #logpanel{flex:1 1 auto;display:flex;flex-direction:column;min-height:9rem}
-#logpanel .pbody{flex:1;min-height:0;display:flex}
+/* column 을 빠뜨리면 flex 가 가로로 작동해 #log 의 height:0 이 그대로 남는다. */
+#logpanel .pbody{flex:1;min-height:0;display:flex;flex-direction:column}
 #refcol,#writecol,#game>main{min-width:0}
 /* 열 스크롤을 걸지 않는다 — 내용은 전부 그대로 보인다.
    세로가 넘치는 문제는 스크롤로 감추지 않고, 넣는 양을 줄여서 푼다. */
-/* 기록은 열이 끝나는 곳까지 늘어난다. 넘치는 줄만 자체 스크롤에 맡긴다. */
-#log{flex:1;min-height:0;overflow-y:auto}
 
 .panel{background:var(--panel);border:1px solid var(--rule)}
 .phead{
@@ -421,11 +420,21 @@ canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:100%;max-widt
 /* 로그 */
 #log:empty::before{content:'개시하면 매 턴 무슨 일이 있었는지 여기에 남는다.';color:var(--ink-3);opacity:.62}
 /* 패널 안에 또 상자를 두르지 않는다 — 테두리가 겹치면 안쪽이 눌린 것처럼 보이고,
-   좁은 열에서 좌우 여백만 두 번 먹는다. 배경도 패널 것을 그대로 쓴다. */
+   좁은 열에서 좌우 여백만 두 번 먹는다. 배경도 패널 것을 그대로 쓴다.
+
+   상자는 열이 끝나는 곳에 고정되고(flex:1 + min-height:0), 넘치는 줄은
+   스크롤에 맡기되 막대는 감춘다. 잘라내지는 않는다 — 어느 줄이 언제 걸렸는지
+   짚는 게 이 상자의 용도라 지난 턴이 사라지면 안 된다.
+   매 턴 끝에 맨 아래로 보내므로 평소에는 최신 줄이 그냥 보인다. */
 #log{
-  overflow-y:auto;padding:0;
+  /* height:0 이 핵심이다. grid 의 행 높이는 "가장 큰 아이템의 자연 높이"로 정해지는데,
+     로그를 자라게 두면 줄이 쌓일수록 왼쪽 열이 행을 밀어올려 세 열이 같이 길어진다.
+     자연 높이를 0 으로 묶고 남는 공간만 flex 로 받으면 상자가 제자리에 선다. */
+  flex:1 1 0;height:0;min-height:0;overflow-y:auto;padding:0;
+  scrollbar-width:none;-ms-overflow-style:none;
   font-family:var(--mono);font-size:var(--fs-1);line-height:1.7;color:var(--ink-3);
 }
+#log::-webkit-scrollbar{width:0;height:0;display:none}
 /* 잘라내지 않는다 — 어느 줄이 언제 걸렸는지 짚는 게 이 상자의 용도다 */
 #log div{padding:.1rem 0;border-bottom:1px solid var(--hair)}
 #log b{font-weight:400}
