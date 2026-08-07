@@ -1175,7 +1175,13 @@ const ROSTER=[
      공격 방식이 역할마다 다르다. 같은 역할 안의 차이는 그 위에 얹는다.
        atk  한 턴에 때릴 수 있는 횟수
        cd   공격 뒤 쉬는 턴 수 (미오만 1 — 한 발 쏘고 한 턴 재장전)
-       heal 치료 카드로 회복시키는 양 (지원만) */
+       dmg  한 방에 깎는 양 (기본 1. 미오만 2)
+       heal 치료 카드로 회복시키는 양 (지원만)
+
+     미오의 dmg 2 는 재장전을 고치면서 같이 넣은 것이다. 재장전이 안 걸리던 동안
+     미오는 「사거리 5에 매 턴 발사」라 최강이었고, 정상화하자 최약이 됐다 —
+     사거리만 낫고 발사·체력·피해 셋 다 유이보다 아래였기 때문이다(평균 승률 14.6%→6.8%).
+     한 발을 무겁게 하니 11.7% 로 돌아왔고 밤1 중앙값도 11.1%→13.9% 로 목표 안에 들었다. */
   {key:'rin', name:'린', role:'전위', hp:5, speed:2, range:1, atk:2,
    trait:'한 턴에 행동 2회 · 공격 2회', t:'fast'},
   {key:'hana', name:'하나', role:'전위', hp:7, speed:1, range:1,
@@ -1184,8 +1190,8 @@ const ROSTER=[
    trait:'공격 시 넉백', t:'push'},
   {key:'yui', name:'유이', role:'사수', hp:3, speed:1, range:3,
    trait:'사거리 3', t:'far'},
-  {key:'mio', name:'미오', role:'사수', hp:2, speed:1, range:5, cd:1,
-   trait:'사거리 5 · 2턴에 1회', t:'snipe'},
+  {key:'mio', name:'미오', role:'사수', hp:2, speed:1, range:5, cd:1, dmg:2,
+   trait:'사거리 5 · 2턴에 1회 · 피해 2', t:'snipe'},
   {key:'nagi', name:'나기', role:'사수', hp:3, speed:1, range:2, atk:2,
    trait:'사거리 2 · 한 턴에 2회', t:'rapid'},
   {key:'aoi', name:'아오이', role:'지원', hp:4, speed:1, range:1, heal:3,
@@ -1211,20 +1217,23 @@ let ACTIVE=[0,1,3];
 /* 카드는 본질이 IF-THEN 규칙이다. 이름은 명령어 한 단어, 설명은 조건과 행동으로 쪼갠다.
    설명을 쉽게 쓰는 것보다 설명의 형태를 규칙과 일치시키는 쪽이 빨리 읽힌다. */
 const CARDS={
-  strike:{name:'공격', line:'사거리 내 가장 체력 낮은 적 공격', when:'사거리 안에 적이 있으면', then:'가장 약한 적을 친다',
+  strike:{name:'공격', line:'사거리 내 가장 체력 낮은 적 공격',
     plan(s,u){
-      if(u.cdLeft>0) return null;          // 미오: 쏘고 나면 한 턴 재장전
+      /* 미오: 쏘고 나면 한 턴 재장전. 「몇 턴 남았는가」를 세지 않고 「언제까지 못 쏘는가」를
+         적어 둔다 — 예전에는 턴 머리에서 먼저 깎고 같은 턴에 검사해 cd 1 이 0턴처럼 굴었다
+         (실측: 미오가 공격한 480턴 중 240턴이 바로 다음 턴에도 공격했다). */
+      if(s.turn<=(u.cdUntil||0)) return null;
       const t=targets(s,u).sort((a,b)=>a.hp-b.hp||a.i-b.i)[0];
       return t?{k:'atk',t}:null;
     }},
-  seize:{name:'점령', line:'미 점령 거점 중 가장 가까운 쪽으로 이동', when:'내 것이 아닌 거점이 있으면', then:'가장 가까운 거점으로 한 칸',
+  seize:{name:'점령', line:'미 점령 거점 중 가장 가까운 쪽으로 이동',
     plan(s,u){
       const g=s.nodes.filter(n=>n.owner!==u.side);
       if(!g.length)return null;
       if(g.some(n=>n.x===u.x&&n.y===u.y))return {k:'wait'};
       const m=stepToward(s,u,g); return m?{k:'mv',...m}:null;
     }},
-  retreat:{name:'후퇴', line:'체력 절반 이하 및 적 근처 존재 시 뒤로 이동', when:'체력이 절반 이하이고 적이 2칸 안이면', then:'적에게서 먼 쪽으로 한 칸',
+  retreat:{name:'후퇴', line:'체력 절반 이하 및 적 근처 존재 시 뒤로 이동',
     plan(s,u){
       if(u.hp*2>u.max)return null;
       const e=alive(s).filter(v=>v.side!==u.side);
@@ -1237,7 +1246,7 @@ const CARDS={
       }
       return best?{k:'mv',...best}:null;
     }},
-  hold:{name:'주둔', line:'점령 거점 존재 및 근처 적 없을 시 거점으로 이동', when:'내 거점이 있고 옆에 적이 없으면', then:'그 거점으로 가서 머문다',
+  hold:{name:'주둔', line:'점령 거점 존재 및 근처 적 없을 시 거점으로 이동',
     plan(s,u){
       // 적이 코앞이면 "지킨다"는 할 말이 없는 카드다. 아래 줄로 넘긴다.
       if(alive(s).some(v=>v.side!==u.side&&md(v,u)<=1))return null;
@@ -1246,14 +1255,14 @@ const CARDS={
       if(g.some(n=>n.x===u.x&&n.y===u.y))return {k:'wait'};
       const m=stepToward(s,u,g); return m?{k:'mv',...m}:null;
     }},
-  chase:{name:'추격', line:'필드에 적 존재 시 가장 가까운 적으로 이동', when:'판에 적이 남아 있으면', then:'가장 가까운 적 옆으로 한 칸',
+  chase:{name:'추격', line:'필드에 적 존재 시 가장 가까운 적으로 이동',
     plan(s,u){
       const e=alive(s).filter(v=>v.side!==u.side); if(!e.length)return null;
       const g=[]; for(const v of e) for(const c of adj(v)) if(!blocked(s,c,u)) g.push(c);
       if(!g.length)return null;
       const m=stepToward(s,u,g); return m?{k:'mv',...m}:null;
     }},
-  rally:{name:'집결', line:'가장 근접한 아군으로 이동', when:'아군과 떨어져 있으면', then:'가장 가까운 아군 옆으로 한 칸',
+  rally:{name:'집결', line:'가장 근접한 아군으로 이동',
     plan(s,u){
       const f=alive(s).filter(v=>v.side===u.side&&v!==u); if(!f.length)return null;
       if(f.some(v=>md(v,u)===1))return {k:'wait'};
@@ -1263,7 +1272,7 @@ const CARDS={
     }},
   /* 점수 끊김을 손으로 풀게 하는 카드. 주둔은 "적이 없을 때"만 걸리므로
      끊긴 거점 앞에서는 아무 말도 못 한다. 저지는 그 반대편을 맡는다. */
-  block:{name:'저지', line:'점령 거점에 적 존재 시 그 적 쪽으로 이동', when:'내 거점에 적이 붙어 있으면', then:'그 적 쪽으로 한 칸',
+  block:{name:'저지', line:'점령 거점에 적 존재 시 그 적 쪽으로 이동',
     plan(s,u){
       const mine=s.nodes.filter(n=>n.owner===u.side); if(!mine.length)return null;
       const bad=alive(s).filter(v=>v.side!==u.side&&mine.some(n=>md(v,n)<=1));
@@ -1274,11 +1283,11 @@ const CARDS={
       const m=stepToward(s,u,g); return m?{k:'mv',...m}:null;
     }},
   /* 집결은 "떨어져 있으면" 늘 걸려서 위쪽에 두면 아래를 다 죽인다.
-     엄호는 다친 아군이 있을 때만 걸리는 좁은 조건이라 위에 둬도 숨을 남긴다. */
+     실측 발동률 96.6% — 추격(99.7%) 다음으로 높다(`tools/cardstat.js`). */
   /* ── 역할군 전용 세 장 ──
      사수는 붙으면 죽고, 지원은 직접 안 싸우며, 전위는 몸으로 막는다.
      그 차이를 능력치뿐 아니라 '쓸 수 있는 줄'로도 갈라 놓는다. */
-  kite:{name:'거리두기', line:'적이 옆에 붙을 시 먼 쪽으로 이동', when:'적이 옆에 붙으면', then:'먼 쪽으로 한 칸',
+  kite:{name:'거리두기', line:'적이 옆에 붙을 시 먼 쪽으로 이동',
     plan(s,u){
       const e=alive(s).filter(v=>v.side!==u.side);
       if(!e.some(v=>md(v,u)<=1))return null;
@@ -1289,7 +1298,7 @@ const CARDS={
       }
       return best?{k:'mv',...best}:null;
     }},
-  mend:{name:'치료', line:'근처 체력 감소한 아군 존재 시 치료', when:'다친 아군이 2칸 안에 있으면', then:'치료 · 아니면 한 칸 다가감',
+  mend:{name:'치료', line:'근처 체력 감소한 아군 존재 시 치료',
     plan(s,u){
       /* 사거리가 1이던 때는 "다친 아군이 존재"(턴의 25%)가 "옆에 있다"(6.9%)로
          3.6배 깎여 카드가 사실상 안 걸렸다. 2칸이면 닿는 칸이 4개에서 12개로 는다. */
@@ -1308,7 +1317,7 @@ const CARDS={
      쓰러짐이 플레이어가 못 막는 사건이라 거기에 대가를 물리면 그냥 세금이 된다.
      대신 되돌릴 수단을 주고, 그 수단을 네 줄 중 한 자리와 맞바꾸게 한다.
      한 사람당 한 밤에 한 번뿐인 이유는 무한 소생이 16턴을 늘려버리기 때문이다. */
-  rescue:{name:'구조', line:'근처 쓰러진 아군 존재 시 부활', when:'쓰러진 아군이 2칸 안에 있으면', then:'절반 체력으로 일으켜 내 옆으로 · 아니면 한 칸 다가감',
+  rescue:{name:'구조', line:'근처 쓰러진 아군 존재 시 부활',
     plan(s,u){
       const down=s.units.filter(v=>v.side===u.side&&v.hp<=0&&!v.rescued);
       if(!down.length)return null;
@@ -1320,16 +1329,11 @@ const CARDS={
       if(!g.length)return null;
       const m=stepToward(s,u,g); return m?{k:'mv',...m}:null;
     }},
-  cover:{name:'엄호', line:'체력 절반 이하 아군 존재 시 그 옆으로 이동', when:'체력이 절반 이하인 아군이 있으면', then:'그 아군 옆으로 한 칸',
-    plan(s,u){
-      const hurt=alive(s).filter(v=>v.side===u.side&&v!==u&&v.hp*2<=v.max);
-      if(!hurt.length)return null;
-      if(hurt.some(v=>md(v,u)===1))return {k:'wait'};
-      const g=[]; for(const v of hurt) for(const c of adj(v)) if(!blocked(s,c,u)) g.push(c);
-      if(!g.length)return null;
-      const m=stepToward(s,u,g); return m?{k:'mv',...m}:null;
-    }}
 };
+/* 「엄호」를 뺐다 (2026-08-07). 최초 커밋의 세트 C(신규카드형) 전용 카드였다 —
+   밤2 저지·밤3 엄호로 "밤이 깊어지면 줄이 내려온다"를 만드는 안이었다.
+   세트 B가 채택되면서 그 밤 구성이 사라졌고, 저지만 역할 전용으로 살아남았다.
+   정의는 남아 있었지만 어떤 손패에도 없어 도달 0회였다(`tools/cardstat.js`). */
 
 /* ── 스테이지 ── */
 /* 세 밤의 정답이 서로 달라야 한다. 같으면 "판이 바뀐다"는 말이 거짓이 된다.
@@ -1513,7 +1517,7 @@ function actUnit(s,u,order,ev){
         const c={x:act.t.x+dx,y:act.t.y+dy};
         if(inb(c)&&!blocked(s,c,act.t)){ act.t.x=c.x; act.t.y=c.y; ev.push({t:'push',u,v:act.t}); }
       }
-      u.cdLeft=u.cd||0;                    // 미오: 쏘고 나면 다음 턴은 재장전
+      if(u.cd) u.cdUntil=s.turn+u.cd;      // 미오: 다음 u.cd 턴 동안은 못 쏜다
       if(++hits<(u.atk||1)) continue;      // 나기·린: 남은 공격이 있으면 한 번 더 읽는다
       return;
     }
@@ -1595,7 +1599,7 @@ function runTurn(s){
     ev.push({t:'switch'});
   }
   respawn(s,ev);
-  for(const u of s.units) if(u.hp>0){ u.px=u.x; u.py=u.y; if(u.cdLeft>0) u.cdLeft--; }
+  for(const u of s.units) if(u.hp>0){ u.px=u.x; u.py=u.y; }
   for(const u of s.units) if(u.hp>0) actUnit(s,u,u.order,ev);
   // 거점: 밟은 쪽이 가져간다. 떠나도 유지된다.
   for(const n of s.nodes){
@@ -1648,8 +1652,8 @@ function makeState(si,orders){
   const units=[];
   S.ally.forEach(([x,y],k)=>{const r=ROSTER[ACTIVE[k]];
     units.push({i:k,side:'ally',key:r.key,name:r.name,hp:r.hp,max:r.hp,t:r.t,role:r.role,
-                speed:r.speed,range:r.range,atk:r.atk||1,cd:r.cd||0,cdLeft:0,
-                heal:r.heal||0,dmg:1,x,y,px:x,py:y,gone:false,rescued:false,
+                speed:r.speed,range:r.range,atk:r.atk||1,cd:r.cd||0,cdUntil:0,
+                heal:r.heal||0,dmg:r.dmg||1,x,y,px:x,py:y,gone:false,rescued:false,
                 order:(per?(per[k]||[]):shared).slice()});});
   const fhp=S.foeHp||2;
   /* 허상의 공격력은 2다. 아군 체력이 역할군 개편으로 2~3에서 2~7로 올랐는데
@@ -1659,7 +1663,7 @@ function makeState(si,orders){
     const _h=K?K.hp:fhp;
     units.push({i:10+k,side:'foe',key:'foe',kind:kind||'base',
                 name:(K?K.nm:'허상')+(k+1),hp:_h,max:_h,
-                speed:K?K.speed:1,range:K?K.range:1,atk:1,cd:0,cdLeft:0,heal:0,dmg:K?K.dmg:2,
+                speed:K?K.speed:1,range:K?K.range:1,atk:1,cd:0,cdUntil:0,heal:0,dmg:K?K.dmg:2,
                 x,y,px:x,py:y,hx:x,hy:y,back:0,gone:false,
                 order:S.foe.slice()});});
   return {si,units,nodes:S.nodes.map(([x,y],k)=>({x,y,owner:(S.own&&S.own[k])||null})),
@@ -1868,7 +1872,7 @@ const ro=w=>{const c=w.charCodeAt(w.length-1)-0xAC00;
    9x9 인 이유는 홀수라야 가운데 한 칸이 생겨서 대칭 도형이 흐트러지지 않기 때문이다. */
 const ICON_PAL={A:'#6cc2cf',a:'#3f8c99',F:'#e87b8e',f:'#a1505f',
                 N:'#e0ae4d',n:'#96742e',d:'#aab0be',D:'#5b6478'};
-/* 24×24 카드 그림. 24줄 × 11장을 손으로 적는 대신 조각을 조합한다 —
+/* 24×24 카드 그림. 24줄 × 10장을 손으로 적는 대신 조각을 조합한다 —
    같은 요소(아군·적·거점)가 카드마다 같은 자리에 같은 크기로 서야
    열한 장을 나란히 놓았을 때 "무엇이 다른가"가 눈에 들어온다.
 
@@ -1988,8 +1992,8 @@ const ICONS=(()=>{
   I.hold  =make(g=>{ stamp(g,8,2,BODY,ALLY); stamp(g,8,14,NODE,GOLD); });
   // 5 추격 — 대상이 적(붉은색). 점령과 색으로 갈린다
   I.chase =make(g=>{ me(g); arrR(g); foe(g); });
-  /* 6 집결 — 「누군가에게 간다」 셋(추격·집결·엄호)은 화살표를 같은 자리에 두고
-     대상만 바꾼다. 붉은 적이면 추격, 멀쩡한 아군이면 집결, 반쪽 아군이면 엄호.
+  /* 6 집결 — 「누군가에게 간다」 둘(추격·집결)은 화살표를 같은 자리에 두고
+     대상만 바꾼다. 붉은 적이면 추격, 아군이면 집결.
      양방향 화살표를 쓰면 모이는 게 아니라 흩어지는 것으로 읽힐 수 있다. */
   I.rally =make(g=>{ me(g); arrR(g); ally(g); });
   // 7 저지 — 세 요소 수평. 내가 거점과 적 사이에 낀다
@@ -2002,8 +2006,6 @@ const ICONS=(()=>{
   I.mend  =make(g=>{ me(g,0); ally(g,16); stamp(g,MID,UY+2,CROSS,GOLD); });
   // 10 구조 — 누운 회색 몸을 금색 화살표가 끌어올린다
   I.rescue=make(g=>{ stamp(g,7,3,ARROW_U,GOLD); stamp(g,6,14,DOWN,DIM); });
-  // 11 엄호 — 대상이 반쪽(체력 절반). 집결과 갈리는 지점이 이것
-  I.cover =make(g=>{ me(g); arrR(g); hurt(g); });
   return I;
 })();
 /* 한 번 그려서 데이터 URI 로 굳힌다. paintHand 는 자주 도는데 매번 캔버스를
@@ -2408,6 +2410,7 @@ const ABILITY={
   yui:[['표준 사수','사거리 3. 세 칸 밖에서 매 턴 때립니다.'],
        ['얇은 체력','체력 3. 허상에게 두 번 맞으면 쓰러집니다.']],
   mio:[['최장 사거리','사거리 5. 판 어디든 닿습니다.'],
+       ['한 발이 무겁다','한 방에 2를 깎습니다. 아홉 중 유일하게 한 번에 둘을 깎습니다.'],
        ['재장전','쏘고 나면 다음 턴은 쏘지 못합니다. 두 턴에 한 발입니다.'],
        ['가장 약한 몸','체력 2. 허상에게 한 번만 맞아도 쓰러집니다.']],
   nagi:[['연사','한 턴에 두 번 때립니다. 아홉 중 단위 시간 화력이 가장 높습니다.'],
@@ -2490,6 +2493,7 @@ function paintDetail(){
     line('공격',r.atk||1,'회',2)+
     line('사거리',r.range,'칸',5)+
     (r.heal?line('치료',r.heal,'',3):'')+
+    (r.dmg>1?line('피해',r.dmg,'',2):'')+
     (r.cd?'<dt>재장전</dt><dd>'+r.cd+'턴</dd><span class="pips"><b>쏘고 나면 한 턴 쉼</b></span>':'');
   $('pdablist').innerHTML=(ABILITY[r.key]||[])
     .map(a=>'<li><b>'+a[0]+'</b>'+a[1]+'</li>').join('');
