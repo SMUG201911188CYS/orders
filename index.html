@@ -420,9 +420,10 @@ canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:100%;max-widt
 
 /* 로그 */
 #log:empty::before{content:'개시하면 매 턴 무슨 일이 있었는지 여기에 남는다.';color:var(--ink-3);opacity:.62}
+/* 패널 안에 또 상자를 두르지 않는다 — 테두리가 겹치면 안쪽이 눌린 것처럼 보이고,
+   좁은 열에서 좌우 여백만 두 번 먹는다. 배경도 패널 것을 그대로 쓴다. */
 #log{
-  margin-top:10px;height:15rem;overflow-y:auto;background:var(--sunk);
-  border:1px solid var(--rule);padding:.5rem .7rem;
+  overflow-y:auto;padding:0;
   font-family:var(--mono);font-size:var(--fs-1);line-height:1.7;color:var(--ink-3);
 }
 /* 잘라내지 않는다 — 어느 줄이 언제 걸렸는지 짚는 게 이 상자의 용도다 */
@@ -563,7 +564,7 @@ canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:100%;max-widt
 .mem .cnt{grid-area:cnt;font-family:var(--mono);font-size:var(--fs-1);color:var(--ink-3);
      white-space:nowrap;font-variant-numeric:tabular-nums}
 .mem.done .cnt{color:var(--gold)}
-#squadhint{font-size:var(--fs-1);text-transform:none;letter-spacing:0}
+#squadhint,.lghint{font-size:var(--fs-1);text-transform:none;letter-spacing:0}
 .mem canvas{grid-area:por;width:42px;height:42px;flex:none;max-width:none;image-rendering:pixelated}
 .mem .nm{grid-area:nm;color:var(--ink)}
 .mem .tr{grid-area:tr;color:var(--ink-3);font-size:var(--fs-1);min-width:0;line-height:1.35;
@@ -719,7 +720,9 @@ canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:100%;max-widt
     <button id="fieldbtn" style="margin-top:12px">? 이 밤에 있는 것 · 규칙</button>
 
     <div class="panel" style="margin-top:12px" id="logpanel">
-      <div class="phead"><span>기록</span></div>
+      <!-- 「02」가 무슨 숫자인지 화면 어디에도 없었다. 이 게임은 "맞는 첫 칸만
+           실행"하므로 몇 번 칸이 걸렸는지가 곧 그 턴의 판정 결과다. -->
+      <div class="phead"><span>기록</span><span class="lghint">대원 · 읽은 칸 · 카드</span></div>
       <div class="pbody"><div id="log" role="log" aria-live="polite"></div></div>
     </div>
   </aside>
