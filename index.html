@@ -635,8 +635,8 @@ canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:100%;max-widt
   #title .story{font-size:var(--fs-2);line-height:1.6}
 }   /* ← 이 닫는 괄호가 없었다. 브라우저가 EOF 에서 알아서 닫아 줘서 안 보였을 뿐이다. */
 </style>
-</head>
-<body>
+
+
 <div id="app">
 
 <!-- 제목 → 그림 → 설명 → 시작. 한 줄로 내려간다.
@@ -758,7 +758,7 @@ canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:100%;max-widt
       <span id="speed"><button class="btn" id="spd" style="padding:.2rem .6rem">1x</button></span>
     </header>
     <div id="stage-wrap">
-      <canvas id="cv" width="136" height="136" role="img"
+      <canvas id="cv" width="184" height="184" role="img"
               aria-label="5×5 전술 판. 진행 상황은 아래 기록에 글로 남습니다."></canvas>
       <div id="banner">
         <h2 id="bt"></h2>
@@ -1099,6 +1099,9 @@ PAL.nagi={L:'#12101a',S:'#f7d7b4',s:'#d99a72',H:'#5a4570',h:'#372a45',G:'#73588f
 PAL.aoi={L:'#12101a',S:'#f7d7b4',s:'#d99a72',H:'#7da6cd',h:'#4d667f',G:'#a0d4ff',E:'#1a1824',W:'#ffffff',C:'#66333e',c:'#422128',A:'#f0e6d2'};
 PAL.hotaru={L:'#12101a',S:'#f7d7b4',s:'#d99a72',H:'#f0c05a',h:'#947737',G:'#fff573',E:'#1a1824',W:'#ffffff',C:'#933e28',c:'#5f281a',A:'#f0e6d2'};
 PAL.shizu={L:'#12101a',S:'#f7d7b4',s:'#d99a72',H:'#e8e4e6',h:'#8f8d8e',G:'#ffffff',E:'#1a1824',W:'#ffffff',C:'#963232',c:'#612020',A:'#f0e6d2'};
+PAL.foe_rush=Object.assign({},PAL.foe,{C:'#7a4a2a',c:'#5a3520',A:'#e0ae4d'});
+PAL.foe_gun =Object.assign({},PAL.foe,{C:'#2a4a6a',c:'#1d3550',A:'#6cc2cf'});
+PAL.foe_hulk=Object.assign({},PAL.foe,{C:'#4a2a4a',c:'#331d33',A:'#c98ad6'});
 const PAL_HIT = new Proxy({},{get:()=>'#ffffff'});
 
 /* 보드용 16x16 몸통은 셋만 그려져 있는데 편성 화면은 아홉을 고르게 한다.
@@ -1159,7 +1162,7 @@ drawWordmark();
 /* ══════════════════════════════════════════════════════════════
    2. 규칙 — 5x5, 3 vs 3, 거점 3개, 16턴.
    ══════════════════════════════════════════════════════════════ */
-const W=5,H=5,MAXTURN=16;
+const W=7,H=7,MAXTURN=22;
 
 const ROSTER=[
   /* trait 는 게임 중 야근조 패널에 한 줄로 뜬다. "발이 빠르다" 같은 형용사는
@@ -1344,75 +1347,36 @@ const NIGHT1=
      단일 (카드,슬롯) 커버 — 한 조건이 전체 승리에서 차지하는 비중. 밤3<42%
    Z는 기존 판이며 밤3 깊이가 1이다. 비교용으로만 남긴다. */
 const STAGE_SETS={};
-
-/* ── A 파라미터형: 새 규칙 없이 배치·소유·체력만 바꾼다. ── */
-STAGE_SETS.A=[NIGHT1,
- {name:'2  전부 넘어간 밤',
-  intro:'교대해 보니 거점 셋이 전부 저쪽 것입니다. 하나도 되찾지 못하면 점수는 0으로 끝납니다.',
-  hand:['strike','seize','retreat','hold','chase'],
-  foe:['strike','seize','hold','chase'],
-  ally:[[0,4],[3,3],[3,4]], foes:[[0,0],[4,1],[2,1]],
-  nodes:[[4,4],[2,3],[3,1]], own:['foe','foe','foe']},
-
- {name:'3  두 대로 안 쓰러지는 밤',
-  intro:'거점은 다시 비어 있습니다. 대신 오늘 허상은 두 대로 쓰러지지 않아, 교전 한 번에 세 턴이 묶입니다.',
-  hand:['strike','seize','retreat','hold','chase','rally'],
-  foe:['hold','strike','chase','seize'],
-  ally:[[1,4],[4,3],[4,2]], foes:[[3,1],[2,2],[4,1]],
-  nodes:[[1,2],[0,3],[1,0]], own:[null,null,null], foeHp:3}];
-
-/* ── B 장애물형: 벽이 생긴다. 카드는 하나도 안 바뀐다. ── */
-STAGE_SETS.B=[NIGHT1,
- {name:'2  무너진 복도',
-  intro:'천장이 내려앉아 길이 세 군데 막혔습니다. 거점 둘은 이미 넘어가 있습니다.',
-  hand:['strike','seize','retreat','hold','chase'],
-  foe:['hold','seize','strike','chase'],
-  ally:[[3,3],[3,4],[1,3]], foes:[[4,2],[1,0],[1,1]],
-  nodes:[[0,2],[4,1],[2,3]], own:['foe','foe',null],
-  walls:[[2,1],[1,2],[0,3]]},
-
- {name:'3  길이 막힌 밤',
-  intro:'막힌 자리가 하나 더 늘었습니다. 오늘 허상은 두 대로 쓰러지지 않고, 돌아가는 동안 거점은 계속 끊깁니다.',
-  hand:['strike','seize','retreat','hold','chase','rally'],
-  foe:['seize','strike','hold','chase'],
-  ally:[[2,3],[3,4],[1,3]], foes:[[4,0],[1,0],[0,1]],
-  nodes:[[4,4],[1,1],[4,3]], own:[null,null,null],
-  walls:[[1,2],[4,1],[4,2],[2,1]], foeHp:3}];
-
-/* ── C 신규카드형: 끊김을 손으로 푸는 줄이 온다. 판 구조는 그대로다. ── */
-STAGE_SETS.C=[NIGHT1,
- {name:'2  끊긴 밤',
-  intro:'거점 하나는 이미 우리 것입니다. 그런데 옆에 적이 붙으면 그 턴 점수가 들어오지 않습니다 — 떼어내는 줄이 새로 내려왔습니다.',
-  hand:['strike','seize','retreat','hold','block'],
-  foe:['hold','seize','strike','chase'],
-  ally:[[1,4],[3,4],[2,4]], foes:[[2,0],[4,1],[3,1]],
-  nodes:[[0,3],[3,2],[3,0]], own:['ally',null,null]},
-
- {name:'3  둘 다 지켜야 하는 밤',
-  intro:'거점 하나는 우리 것, 하나는 저쪽 것입니다. 오늘 허상은 두 대로 쓰러지지 않습니다.',
-  hand:['strike','seize','retreat','hold','block','cover'],
-  foe:['seize','strike','hold','chase'],
-  ally:[[1,3],[4,4],[1,4]], foes:[[2,1],[2,0],[0,0]],
-  nodes:[[3,2],[0,1],[4,2]], own:['ally','foe',null], foeHp:3}];
-
-/* ── Z 현행: 밤3의 정답 깊이가 1이다(추격 1번 줄 60/60). 비교용 보존. ── */
-STAGE_SETS.Z=[NIGHT1,
- {name:'2  젖은 밤',
-  intro:'교대해 보니 거점 둘이 이미 넘어가 있습니다. 되찾지 못하면 점수는 계속 저쪽으로 쌓입니다.',
-  hand:['strike','seize','retreat','hold','chase'],
-  foe:['hold','seize','strike','chase'],
-  ally:[[0,4],[1,4],[0,3]], foes:[[3,0],[4,1],[2,0]],
-  nodes:[[4,0],[4,2],[4,4]], own:['foe','foe',null]},
-
- {name:'3  지시서가 틀린 밤',
-  intro:'판이 엇갈려 있습니다. 우리 거점은 저 끝에 있고, 허상은 이미 우리 뒤를 밟고 지나갔습니다.',
-  hand:['strike','seize','retreat','hold','chase','rally'],
+const FOE_KIND={
+  base:{hp:2,speed:1,range:1,dmg:2,nm:'허상'},
+  rush:{hp:2,speed:2,range:1,dmg:1,nm:'질주체'},
+  gun :{hp:2,speed:0,range:3,dmg:2,nm:'포체'},
+  hulk:{hp:5,speed:1,range:1,dmg:2,nm:'거체'}
+};
+STAGE_SETS.B=[
+ {name:'1  첫 교대',
+  intro:'질주체가 먼저 닿습니다. 포체는 자리에서 멀리 쏩니다.',
+  hand:['strike','seize','retreat','hold'],
   foe:['strike','chase','seize','hold'],
-  ally:[[2,3],[1,4],[3,4]], foes:[[0,0],[4,0],[2,0]],
-  nodes:[[0,1],[4,1],[2,4]], own:['ally',null,'foe'],
-  // 오늘 허상은 두 대로 안 쓰러진다. 교전 한 번에 세 턴이 묶이고,
-  // 그 세 턴 동안 비운 거점은 계속 끊긴다.
-  foeHp:3}];
+  ally:[[1,6],[3,6],[5,6]], foes:[[1,0,'rush'],[3,0,'gun'],[5,0,'base']],
+  nodes:[[1,3],[3,3],[5,3]], own:[null,null,null]},
+
+ {name:'2  버티는 복도',
+  intro:'거체가 좁은 길을 막고 섰습니다. 거점 둘은 이미 넘어가 있습니다.',
+  hand:['strike','seize','retreat','hold','chase'],
+  foe:['hold','seize','strike','chase'],
+  ally:[[4,5],[5,6],[2,5]], foes:[[5,1,'hulk'],[1,0,'rush'],[2,1,'base']],
+  nodes:[[0,3],[6,2],[3,5]], own:['foe','foe',null],
+  walls:[[3,1],[1,3],[0,4],[5,3]]},
+
+ {name:'3  포화가 겹치는 밤',
+  intro:'포체가 둘입니다. 사거리 셋이 겹치는 자리는 서 있을 수 없습니다.',
+  hand:['strike','seize','retreat','hold','chase','rally'],
+  foe:['seize','strike','hold','chase'],
+  ally:[[3,5],[4,6],[2,5]], foes:[[6,0,'gun'],[1,0,'gun'],[0,1,'hulk']],
+  nodes:[[6,6],[1,1],[6,4]], own:[null,null,null],
+  walls:[[1,3],[5,2],[5,3],[3,2]]}];
+STAGE_SETS.A=STAGE_SETS.B; STAGE_SETS.C=STAGE_SETS.B; STAGE_SETS.Z=STAGE_SETS.B;
 
 /* 파라미터는 ?a=b 와 #a=b 둘 다 받는다.
    크롬은 file:// 에 쿼리스트링이 붙으면 로드 자체를 거부한다 — 로컬에서 열면
@@ -1559,9 +1523,13 @@ function actUnit(s,u,order,ev){
     }
     if(act.k==='wait'){ if(pass===0) ev.push({t:'wait',u,card:order[fired],slot:fired}); return; }
     if(act.k==='mv'){
+      /* 아래 셋은 "맞는 줄이 없었다"가 아니라 "줄은 맞았는데 못 갔다"이다.
+         카드와 칸 번호를 함께 실어야 기록이 실제로 일어난 일을 말한다 —
+         안 실으면 로그가 「맞는 줄 없음」으로 찍혀 플레이어가 지시서를 엉뚱하게 고친다. */
       // 붙잡힌 적은 못 움직인다. 공격은 여전히 한다 — 무력화가 아니라 발이 묶인 것이다.
-      if(isBound(s,u)){ if(pass===0) ev.push({t:'bound',u}); return; }
-      if(blocked(s,act,u)){ if(pass===0) ev.push({t:'idle',u}); return; }
+      if((u.speed||0)<1){ if(pass===0) ev.push({t:'fixed',u,card:order[fired],slot:fired}); return; }
+      if(isBound(s,u)){ if(pass===0) ev.push({t:'bound',u,card:order[fired],slot:fired}); return; }
+      if(blocked(s,act,u)){ if(pass===0) ev.push({t:'blocked',u,card:order[fired],slot:fired}); return; }
       u.x=act.x; u.y=act.y; moved++;
       if(pass===0) ev.push({t:'mv',u,card:order[fired],slot:fired});
       else ev.push({t:'mv2',u});
@@ -1649,9 +1617,11 @@ function makeState(si,orders){
   /* 허상의 공격력은 2다. 아군 체력이 역할군 개편으로 2~3에서 2~7로 올랐는데
      한 대에 1씩만 깎이면 아무도 안 쓰러져 교전의 압박이 통째로 사라진다.
      이 한 줄이 "사수는 두 대면 끝난다"를 성립시킨다. */
-  S.foes.forEach(([x,y],k)=>{
-    units.push({i:10+k,side:'foe',key:'foe',name:'허상'+(k+1),hp:fhp,max:fhp,
-                speed:1,range:1,atk:1,cd:0,cdLeft:0,heal:0,dmg:2,
+  S.foes.forEach(([x,y,kind],k)=>{ const K=(typeof FOE_KIND!=='undefined'&&FOE_KIND[kind])||null;
+    const _h=K?K.hp:fhp;
+    units.push({i:10+k,side:'foe',key:'foe',kind:kind||'base',
+                name:(K?K.nm:'허상')+(k+1),hp:_h,max:_h,
+                speed:K?K.speed:1,range:K?K.range:1,atk:1,cd:0,cdLeft:0,heal:0,dmg:K?K.dmg:2,
                 x,y,px:x,py:y,hx:x,hy:y,back:0,gone:false,
                 order:S.foe.slice()});});
   return {si,units,nodes:S.nodes.map(([x,y],k)=>({x,y,owner:(S.own&&S.own[k])||null})),
@@ -1801,6 +1771,7 @@ function draw(){
     let dx=fx+(tx-fx)*ease, dy=fy+(ty-fy)*ease;
     dy += Math.sin(anim.t*Math.PI)*(u.px!==u.x||u.py!==u.y ? -1.5 : 0);
     let pal=PAL[u.key];
+    if(u.side==='foe'&&u.kind&&u.kind!=='base'&&PAL['foe_'+u.kind]) pal=PAL['foe_'+u.kind];
     if(hits.has(u)&&k>.45&&k<.75) pal=PAL_HIT;
     if(u.hp<=0) ctx.globalAlpha=Math.max(0,1-k*1.4);
     // 그림자
@@ -2235,6 +2206,10 @@ function logTurn(ev){
     else if(e.t==='mv2') push(e.u,'한 칸 더');
     else if(e.t==='wait')push(e.u,'그 자리에 머묾');
     else if(e.t==='idle')push(e.u,'<span class="c">맞는 줄 없음 · 대기</span>');
+    /* 아래 셋은 줄은 걸렸는데 못 간 경우다. 「맞는 줄 없음」과 섞으면
+       플레이어가 지시서를 고쳐야 할지 자리를 고쳐야 할지 알 수 없다. */
+    else if(e.t==='fixed')push(e.u,'<span class="c">제자리 — 못 움직임</span>');
+    else if(e.t==='blocked')push(e.u,'<span class="c">길이 막힘</span>');
     else if(e.t==='die') push(e.u,'<b class="c">쓰러짐</b>');
     else if(e.t==='back')push(e.u,'<b class="e">다시 들어옴</b>');
     else if(e.t==='push')push(e.u,'<b class="n">'+e.v.name+' 밀어냄</b>');
