@@ -542,8 +542,10 @@ canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:100%;max-widt
   border:1px solid var(--rule);min-height:71px;
   display:flex;flex-direction:column;justify-content:center}
 #carddetail .dn{display:block;font-size:var(--fs-2);font-weight:600;color:var(--gold);margin-bottom:2px}
-/* 가장 긴 문안(26자)이 한 줄에 들어가는 크기다. 줄바꿈이 생기면 이 칸의 높이가
-   카드마다 달라지고, 그러면 아래 것들이 위아래로 흔들린다. */
+/* 한 줄에 들어가야 한다. 줄바꿈이 생기면 이 칸의 높이가 카드마다 달라지고,
+   그러면 아래 것들이 위아래로 흔들린다. 실측 폭 274px — 31자까지 한 줄이었다.
+   글자 수로 넘겨짚지 말 것: 조사·띄어쓰기에 따라 같은 글자 수도 폭이 다르다.
+   문안을 고치면 showCard() 를 카드마다 불러 scrollWidth 와 줄 수를 다시 잰다. */
 #carddetail .dr{font-size:10.5px;color:var(--ink-2);line-height:1.4}
 #carddetail .none{font-size:var(--fs-1);color:var(--ink-3);line-height:1.4}
 
@@ -1262,28 +1264,54 @@ const CARDS={
       if(!g.length)return null;
       const m=stepToward(s,u,g); return m?{k:'mv',...m}:null;
     }},
-  rally:{name:'집결', line:'가장 근접한 아군으로 이동',
+  /* 「집결」을 빼고 그 반대인 「분산」을 둔다 (2026-08-08).
+     집결은 96.6% 로 걸리면서 그중 69.3% 가 제자리였고, 모아서 얻는 것이 판에 없었다 —
+     인접에 걸린 규칙이 하나도 없고, 치료·구조 발동률조차 안 올랐다(36.1 vs 35.4%).
+     손패에서 빼자 나머지 열 장의 성적이 절반쯤 올랐다. 한 장이 판을 눌러 온 것이다.
+     거점이 셋이고 밤3은 세 방향으로 흩어져 있다 — 판은 원래 흩어지라고 말하고 있었다. */
+  scatter:{name:'분산', line:'아군이 2칸 안이면 먼 쪽으로 이동',
     plan(s,u){
-      const f=alive(s).filter(v=>v.side===u.side&&v!==u); if(!f.length)return null;
-      if(f.some(v=>md(v,u)===1))return {k:'wait'};
-      const g=[]; for(const v of f) for(const c of adj(v)) if(!blocked(s,c,u)) g.push(c);
-      if(!g.length)return null;
-      const m=stepToward(s,u,g); return m?{k:'mv',...m}:null;
+      const f=alive(s).filter(v=>v.side===u.side&&v!==u);
+      if(!f.length||!f.some(v=>md(v,u)<=2))return null;
+      let best=null,bd=Math.min(...f.map(v=>md(v,u)));
+      for(const c of freeAdj(s,u)){
+        const d=Math.min(...f.map(v=>Math.abs(v.x-c.x)+Math.abs(v.y-c.y)));
+        if(d>bd){bd=d;best=c;}
+      }
+      return best?{k:'mv',...best}:null;
+    }},
+  /* 열 장 중 유일하게 남을 움직이는 카드. 7×7 에 벽이 있어 막힌 자리에서
+     앞뒤를 바꾸는 것은 다른 방법으로는 여러 턴이 든다.
+     조건을 「더 다친 사람」이 아니라 「나보다 앞선 사람」으로 둔 이유:
+     체력은 허상이 정하지만 위치는 지시서가 만든다. 플레이어가 성립시킬 수 있어야 한다.
+     (실측 발동률 — 체력 기준 1.3% · 위치 기준 6.6%) */
+  swap:{name:'교대', line:'인접 아군 중 나보다 앞선 사람과 자리 교대',
+    plan(s,u){
+      const near=v=>{const e=alive(s).filter(w=>w.side!==v.side);
+        return e.length?Math.min(...e.map(w=>md(w,v))):99;};
+      const f=alive(s).filter(v=>v.side===u.side&&v!==u&&md(v,u)===1&&near(v)<near(u));
+      return f.length?{k:'swap',t:f.sort((a,b)=>near(a)-near(b)||a.i-b.i)[0]}:null;
     }},
   /* 점수 끊김을 손으로 풀게 하는 카드. 주둔은 "적이 없을 때"만 걸리므로
      끊긴 거점 앞에서는 아무 말도 못 한다. 저지는 그 반대편을 맡는다. */
-  block:{name:'저지', line:'점령 거점에 적 존재 시 그 적 쪽으로 이동',
+  /* 저지는 이동만으로는 끊김을 절대 못 푼다 — 이 카드가 걸리는 시점에 적은 이미
+     거점 옆에 있다. 없애거나·밀거나·묶는 것만이 답이다. 밀어내기는 재 보니 오히려
+     나빴고(끊김 14.3→15.3%, 밀어도 다음 턴에 돌아오고 그동안 못 죽인다),
+     붙들기가 가장 잘 풀면서 승률은 안 흔들었다(끊김 12.9% · 승률 10.6→10.8%). */
+  block:{name:'저지', line:'거점에 붙은 적 쪽으로 이동 · 옆이면 묶어 끊김 해제',
     plan(s,u){
       const mine=s.nodes.filter(n=>n.owner===u.side); if(!mine.length)return null;
       const bad=alive(s).filter(v=>v.side!==u.side&&mine.some(n=>md(v,n)<=1));
       if(!bad.length)return null;
-      if(bad.some(v=>md(v,u)===1))return {k:'wait'};
+      const near=bad.filter(v=>md(v,u)===1);
+      if(near.length)return {k:'bind',t:near.sort((a,b)=>a.i-b.i)[0]};
       const g=[]; for(const v of bad) for(const c of adj(v)) if(!blocked(s,c,u)) g.push(c);
       if(!g.length)return null;
       const m=stepToward(s,u,g); return m?{k:'mv',...m}:null;
     }},
-  /* 집결은 "떨어져 있으면" 늘 걸려서 위쪽에 두면 아래를 다 죽인다.
-     실측 발동률 96.6% — 추격(99.7%) 다음으로 높다(`tools/cardstat.js`). */
+  /* 발동률이 곧 「위에 두면 아래를 죽이는 정도」다 — 추격 99.7% · 주둔 46.8% ·
+     공격 27.4% · 분산 20.2% · 구조 14.9% · 저지 13.3% · 교대 6.6% (`tools/cardstat.js`).
+     조건이 느슨한 카드를 1번에 두면 아래 세 칸이 없는 지시서가 된다. */
   /* ── 역할군 전용 세 장 ──
      사수는 붙으면 죽고, 지원은 직접 안 싸우며, 전위는 몸으로 막는다.
      그 차이를 능력치뿐 아니라 '쓸 수 있는 줄'로도 갈라 놓는다. */
@@ -1388,7 +1416,9 @@ STAGE_SETS.B=[
     하나를 질주체로 바꾸자 추격당하는 축이 생겨 8% 가 됐다(적 수는 그대로 셋). */
  {name:'3  쫓기는 밤',
   intro:'질주체가 둘의 걸음으로 옵니다. 포체의 사거리에 서면 그 자리에서 맞습니다.',
-  hand:['strike','seize','retreat','hold','chase','rally'],
+  /* 마지막 밤에 두 장이 한꺼번에 내려온다. 흩어지는 법(분산)과 자리를 바꾸는 법(교대) —
+     거점이 세 방향으로 흩어진 이 밤의 두 가지 답이다. */
+  hand:['strike','seize','retreat','hold','chase','scatter','swap'],
   foe:['seize','strike','hold','chase'],
   /* 마지막 밤에만 붙는 변형 규칙 — 11턴(22턴의 절반)에 허상이 지시서를 갈아 든다.
      바뀌는 것은 앞 두 줄의 자리뿐이다. 전반은 거점부터 먹고 후반은 아군부터 친다.
@@ -1404,7 +1434,11 @@ STAGE_SETS.B=[
   /* 거점 셋을 서로 다른 방향으로 흩었다. 둘이 같은 쪽에 몰려 있으면 한 사람이
      둘을 맡고 나머지 하나가 남아돈다(배분 0). 세 방향이면 셋이 갈라져야 한다.
      측정: 몰림 8%·배분(1,0,2)·단일커버 35% → 분산 11%·확정 자리 없음·28%. */
-  nodes:[[0,5],[3,1],[6,4]], own:[null,null,null],
+  /* 세 번째 거점을 [6,4] 에서 [6,2] 로 올렸다 (2026-08-08). 집결이 빠지면서
+     밤3이 10% 로 헐거워져 밤2(8%)보다 쉬워졌기 때문이다 — 마지막 밤이 가장 쉬우면
+     곡선이 거짓이 된다. 거점 하나를 적진 쪽으로 올리자 4% 가 됐다.
+     ⚠️ 벽을 늘리는 방향은 반대로 갔다(18%). 벽은 적의 접근도 같이 막는다. */
+  nodes:[[0,5],[3,1],[6,2]], own:[null,null,null],
   walls:[[1,3],[5,2],[5,3],[3,2]]}];
 STAGE_SETS.A=STAGE_SETS.B; STAGE_SETS.C=STAGE_SETS.B; STAGE_SETS.Z=STAGE_SETS.B;
 
@@ -1436,8 +1470,10 @@ const unitAt=(s,c)=>alive(s).find(u=>u.x===c.x&&u.y===c.y);
    이동만 막으면 거점 옆에서 묶인 적이 영영 그 자리에 남아 점수를 계속 끊는다 —
    시즈를 데려가면 시즈 때문에 지는 특성이 된다(전 세트 최하위였던 이유).
    "붙잡았다"는 곧 "저 하나는 판에서 빠졌다"여야 앞뒤가 맞는다. */
+/* 속박 — 이동을 막고 거점 점수를 못 끊게 한다. 공격은 막지 못한다.
+   두 경로가 있다. 시즈는 상시·자동이고, 저지 카드는 네 칸 중 하나를 써서 그 턴만이다. */
 const isBound=(s,v)=>v.side==='foe'&&
-  alive(s).some(a=>a.t==='bind'&&a.side==='ally'&&md(a,v)<=1);
+  (v.boundTurn===s.turn||alive(s).some(a=>a.t==='bind'&&a.side==='ally'&&md(a,v)<=1));
 const isWall=(s,c)=>!!s.walls&&s.walls.has(c.x+','+c.y);
 const blocked=(s,c,self)=>{if(isWall(s,c))return true;
   const u=unitAt(s,c);return !!u&&u!==self;};
@@ -1552,6 +1588,24 @@ function actUnit(s,u,order,ev){
       return;
     }
     if(act.k==='wait'){ if(pass===0) ev.push({t:'wait',u,card:order[fired],slot:fired}); return; }
+    /* 붙듦 — 그 턴 동안만 표시를 찍는다. 턴 번호를 적어 두면 따로 지울 필요가 없다. */
+    if(act.k==='bind'){
+      act.t.boundTurn=s.turn;
+      ev.push({t:'bind',u,v:act.t,card:order[fired],slot:fired});
+      return;
+    }
+    /* 교대 — 자리를 맞바꾸고, 끌려간 대원은 그 자리에서 곧바로 자기 지시서를 읽는다.
+       읽고 나면 그 대원의 그 턴은 끝난다(acted). 이미 움직인 대원이면 자리만 바뀐다.
+       열 장 중 유일하게 남을 움직이는 카드라, 대원 행동 순서가 여기서 규칙이 된다. */
+    if(act.k==='swap'){
+      const t=act.t, x=u.x, y=u.y;
+      u.x=t.x; u.y=t.y; t.x=x; t.y=y;
+      u.px=u.x; u.py=u.y; t.px=t.x; t.py=t.y;
+      ev.push({t:'swap',u,v:t,card:order[fired],slot:fired});
+      u.acted=s.turn;
+      if(t.acted!==s.turn){ t.acted=s.turn; actUnit(s,t,t.order,ev); }
+      return;
+    }
     if(act.k==='mv'){
       /* 아래 셋은 "맞는 줄이 없었다"가 아니라 "줄은 맞았는데 못 갔다"이다.
          카드와 칸 번호를 함께 실어야 기록이 실제로 일어난 일을 말한다 —
@@ -1600,7 +1654,8 @@ function runTurn(s){
   }
   respawn(s,ev);
   for(const u of s.units) if(u.hp>0){ u.px=u.x; u.py=u.y; }
-  for(const u of s.units) if(u.hp>0) actUnit(s,u,u.order,ev);
+  /* 교대로 끌려간 대원은 그 자리에서 이미 읽었다. 여기서 또 읽으면 두 번 움직인다. */
+  for(const u of s.units) if(u.hp>0&&u.acted!==s.turn){ u.acted=s.turn; actUnit(s,u,u.order,ev); }
   // 거점: 밟은 쪽이 가져간다. 떠나도 유지된다.
   for(const n of s.nodes){
     const u=unitAt(s,n);
@@ -1967,6 +2022,19 @@ const ICONS=(()=>{
                '...11...',
                '...11...'];
 
+  /* 짧은 화살표 — 「둘이 서로 벌어진다」를 한 칸 안에 그리려면 8폭으로는 자리가 없다.
+     분산 전용이다. 후퇴와 색만 다른 그림이 되면 나란히 놓았을 때 갈리지 않는다. */
+  const ARR4_L=['.1..',
+                '11..',
+                '1111',
+                '11..',
+                '.1..'];
+  const ARR4_R=['..1.',
+                '..11',
+                '1111',
+                '..11',
+                '..1.'];
+
   const ALLY={1:'A',2:'a'}, FOE={1:'F',2:'f'}, GOLD={1:'N',2:'n'}, DIM={1:'d',2:'D'};
   const UY=7;           // 사람이 서는 높이. 열한 장 전부 같은 바닥을 쓴다
   const L=1, R=15;      // 왼쪽 나, 오른쪽 대상
@@ -1992,10 +2060,15 @@ const ICONS=(()=>{
   I.hold  =make(g=>{ stamp(g,8,2,BODY,ALLY); stamp(g,8,14,NODE,GOLD); });
   // 5 추격 — 대상이 적(붉은색). 점령과 색으로 갈린다
   I.chase =make(g=>{ me(g); arrR(g); foe(g); });
-  /* 6 집결 — 「누군가에게 간다」 둘(추격·집결)은 화살표를 같은 자리에 두고
-     대상만 바꾼다. 붉은 적이면 추격, 아군이면 집결.
-     양방향 화살표를 쓰면 모이는 게 아니라 흩어지는 것으로 읽힐 수 있다. */
-  I.rally =make(g=>{ me(g); arrR(g); ally(g); });
+  /* 6 분산 — 청록 둘이 가운데에서 서로 바깥으로 벌어진다.
+     처음에는 후퇴 구도에 대상만 청록으로 바꿔 봤는데, 검수 페이지에 나란히 놓으니
+     형태가 완전히 같아 색으로만 갈렸다. 추격↔점령은 대상 모양도 다르지만(사람/거점)
+     이 둘은 그렇지 않다 — 화살표를 둘로 쪼개 바깥을 향하게 해서 형태부터 갈랐다. */
+  I.scatter=make(g=>{ me(g,0); ally(g,16);
+    stamp(g,8,UY+4,ARR4_L,DIM); stamp(g,12,UY+4,ARR4_R,DIM); });
+  /* 11 교대 — 화살표 둘을 위아래로 엇갈려 「서로 지나친다」를 만든다.
+     한 방향 화살표만 쓰면 추격·집결과 구분되지 않는다. */
+  I.swap  =make(g=>{ me(g); ally(g); arrR(g,MID,UY+1); arrL(g,MID,UY+7); });
   // 7 저지 — 세 요소 수평. 내가 거점과 적 사이에 낀다
   I.block =make(g=>{ stamp(g,0,UY+2,NODE,GOLD); me(g,9); foe(g,17); });
   /* 8 거리두기 — 적이 몸에 닿아 있고, 물러날 방향은 바깥(왼쪽)이다.
@@ -2258,6 +2331,8 @@ function logTurn(ev){
     else if(e.t==='mv')  push(e.u,'한 칸 이동');
     else if(e.t==='mv2') push(e.u,'한 칸 더');
     else if(e.t==='wait')push(e.u,'그 자리에 머묾');
+    else if(e.t==='bind')push(e.u,'<b class="n">'+e.v.name+' 붙듦</b>');
+    else if(e.t==='swap')push(e.u,'<b class="u">'+e.v.name+'와 자리 교대</b>');
     else if(e.t==='idle')push(e.u,'<span class="c">맞는 줄 없음 · 대기</span>');
     /* 아래 셋은 줄은 걸렸는데 못 간 경우다. 「맞는 줄 없음」과 섞으면
        플레이어가 지시서를 고쳐야 할지 자리를 고쳐야 할지 알 수 없다. */
@@ -2858,7 +2933,10 @@ window.__qa=async function(){
     if(S3&&S3.foe2){
       const s=makeState(2,[0,1,2].map(()=>S3.hand.slice(0,4)));
       while(s.turn<S3.switchTurn-1&&!s.over) runTurn(s);
-      const before=s.reveal.filter(Boolean).length;
+      /* 교체 전에 넉 장을 다 열어 둔다. 허상 셋이 같은 칸만 발동하면 자연히 열리는 칸이
+         하나뿐이라 「줄었는가」로는 초기화를 잴 수 없다 — 조건을 만들어 놓고 잰다. */
+      s.reveal=[true,true,true,true];
+      const before=4;
       const sw=runTurn(s).some(x=>x.t==='switch')?s.turn:0;
       /* 교체 턴에도 적은 행동한다. 그 턴이 끝나면 그 턴에 발동한 칸들은 다시 열려 있다
          — 적이 셋이면 최대 셋까지. "전부 닫혀야 한다"고 적으면 통과할 수 없으므로
@@ -2947,11 +3025,11 @@ function nextNight(){ $('bb').click(); return autoPick(); }
 const WIN_ORDER=[
   ['retreat','strike','hold','seize'],
   ['strike','seize','retreat','chase'],
-  /* 밤3은 변형 규칙이 붙으면서 밤2와 같은 줄로는 더 이상 이기지 못한다(32:22 패).
-     공통줄 승리는 360 중 6뿐이고 그중 다섯이 30:29 접전이라, 픽스처로는 34:25 로
-     가장 여유 있는 이 줄을 쓴다. 스테이지를 손보면 다시 뽑을 것 —
+  /* 밤3은 손패가 일곱 장이 되면서(분산·교대 추가) 앞 픽스처가 무효가 됐다.
+     공통줄 승리는 840 중 25 뿐이고, 그중 39:13 으로 가장 여유 있는 이 줄을 쓴다.
+     스테이지나 손패를 손보면 다시 뽑을 것 —
      tools 에서 perm(cfg.hand,4) 중 playPer(cfg,[o,o,o]) 가 이기는 것. */
-  ['retreat','strike','seize','chase']
+  ['strike','seize','chase','scatter']
 ];
 
 /* seq 를 주면 그 순서로, 안 주면 손패 앞에서부터 채운다.
