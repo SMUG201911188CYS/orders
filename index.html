@@ -30,6 +30,10 @@
      칸이 "칠해진 것"으로 읽히고 말이 놓인 것으로 오해되지 않는다. */
   --danger:#2b1a22; --danger-edge:#7d3a4a;
   --wall:#39405c; --wall-top:#5a6488;
+  /* 판 화면의 고정 치수 (2026-08-07 확정). 합계 1280 = 264 + 640 + 320 + 여백 56.
+     창이 좁아져도 이 값들은 변하지 않는다 — 판 한 칸의 크기가 여기서 정해지고,
+     그 값이 캐릭터 아트 스펙의 입력이 되기 때문이다. */
+  --page-w:1280px; --col-l:264px; --col-r:320px; --col-gap:14px;
   /* 타입 스케일 — 역할 5단. 비율 1.2, 최하단이 --fs-root.
      15개로 흩어져 있던 값을 역할로 묶었다. 여기 없는 크기는 쓰지 않는다.
        5 외침    한 화면에 하나 (종료 배너)
@@ -151,25 +155,21 @@ body::after{
 .cta:hover{background:var(--gold);color:#0d0e14}
 
 /* ── 게임 레이아웃 ───────────────────────── */
-#game{display:none;grid-template-columns:minmax(0,1fr) 27rem;gap:22px;align-items:start}
+/* ── 3분할 고정 레이아웃 ────────────────────────────────────────
+   좌 참조 · 중 판 · 우 작성. 플레이어의 행동 순서(지시서를 짠다 → 개시 →
+   판을 본다 → 기록을 읽는다)를 화면 순서와 맞춘 배치다.
+   접지 않는다. 창이 좁아져도 축소도 재배치도 하지 않고 가로 스크롤로 넘긴다 —
+   화면이 해상도마다 달라지면 플레이어가 보는 것과 시연 영상이 달라진다. */
+/* width 고정이라야 판 폭이 640px 로 확정된다. min-width 로는 가운데 1fr 이
+   남는 공간을 먹어 창 크기마다 판이 달라진다 — 아트 스펙을 못 정하게 된다. */
+#game{display:none;width:var(--page-w);margin:0 auto;
+      grid-template-columns:var(--col-l) minmax(0,1fr) var(--col-r);
+      gap:var(--col-gap);align-items:start}
 #game.on{display:grid}
-@media(max-width:1120px){#game.on{grid-template-columns:minmax(0,1fr)}}
-/* 판과 지시서는 항상 같이 보여야 한다. 허상 지시서·야근조는 참조라 스크롤에 맡긴다. */
-@media(min-width:1121px){
-  #game>main,#game>aside{max-height:calc(100dvh - 2rem)}
-  #game>main{display:flex;flex-direction:column;min-height:0}
-  #game>aside{overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
-  #log{flex:1 1 auto;min-height:5.5rem;height:auto}
-}
-/* 글자를 키우면 오른쪽 열만 길어져 판과 지시서가 한 화면에 안 들어온다.
-   넓은 화면에서는 오른쪽을 2열로 쪼개 세로 길이를 보드에 맞춘다. */
-@media(min-width:1400px){
-  #game.on{grid-template-columns:minmax(0,1fr) 52rem}
-  #game>aside{display:grid;grid-template-columns:27rem minmax(0,1fr);
-              gap:14px 18px;align-items:start}
-  #game>aside>.panel:first-child{grid-row:1 / span 2;margin-top:0}
-  #game>aside>.panel{margin-top:0}
-}
+#refcol,#writecol,#game>main{min-width:0}
+/* 열 스크롤을 걸지 않는다 — 내용은 전부 그대로 보인다.
+   세로가 넘치는 문제는 스크롤로 감추지 않고, 넣는 양을 줄여서 푼다. */
+#log{overflow-y:auto}
 
 .panel{background:var(--panel);border:1px solid var(--rule)}
 .phead{
@@ -181,11 +181,12 @@ body::after{
 .pbody{padding:.75rem}
 
 /* 좌: 보드 */
-#stagebar{display:flex;justify-content:space-between;align-items:center;gap:.8rem;margin-bottom:10px;font-size:var(--fs-3)}
+#stagebar{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;
+          align-items:center;gap:1.1rem;margin-bottom:10px;font-size:var(--fs-3)}
 #stagename{color:var(--gold);letter-spacing:.1em}
 #turnbox{font-family:var(--mono);color:var(--ink-2);font-size:var(--fs-2);font-variant-numeric:tabular-nums}
 
-#scores{display:flex;gap:6px;align-items:center;margin-bottom:10px;font-family:var(--mono);font-size:var(--fs-2)}
+#scores{display:flex;gap:6px;align-items:center;margin-bottom:0;font-family:var(--mono);font-size:var(--fs-2)}
 .sbar{flex:1;height:8px;background:var(--sunk);position:relative;overflow:hidden;
       box-shadow:inset 0 0 0 1px var(--rule)}
 .sbar i{position:absolute;inset:0;transform:scaleX(0);transition:transform .25s ease-out}
@@ -196,8 +197,10 @@ body::after{
 
 #stage-wrap{position:relative;background:var(--sunk);border:1px solid var(--rule);padding:10px;display:flex;justify-content:center}
 canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:100%;max-width:680px;height:auto;display:block}
-/* 보드는 정사각이다. 남은 세로 공간을 기준으로 크기를 정해야 화면 밖으로 안 나간다. */
-#cv{width:min(100%,680px,calc(100dvh - 21rem));max-width:none}
+/* 보드는 정사각이고, 폭은 가운데 열(640px)에 묶인다.
+   세로(dvh)에 맞춰 줄이던 규칙을 뺐다 — 창 높이에 따라 판 한 칸의 px이 달라지면
+   아트 스펙을 정할 수 없고, "창을 줄여도 콘텐츠는 줄지 않는다"는 규칙에도 어긋난다. */
+#cv{width:100%;max-width:none}
 
 #banner{
   position:absolute;inset:0;display:none;flex-direction:column;
@@ -209,10 +212,11 @@ canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:100%;max-widt
 #banner p{margin:0;color:var(--ink-2);font-size:var(--fs-3);max-width:36rem;line-height:1.8;text-wrap:pretty}
 
 /* 판의 색이 무슨 뜻인지 화면 안에서 답한다 */
-#legend{display:flex;flex-wrap:wrap;align-items:center;gap:.35rem .9rem;
-        margin-top:9px;font-size:var(--fs-1);color:var(--ink-3)}
+/* 좌측 264px 열로 옮겼다. 가로로 늘어놓던 것을 세로로 세운다. */
+#legend{display:grid;gap:.34rem;margin-top:.6rem;padding-top:.55rem;
+        border-top:1px solid var(--hair);font-size:var(--fs-1);color:var(--ink-3)}
 #legend span{display:flex;align-items:center;gap:.32rem}
-#legend b{font-weight:400;color:var(--ink-2);margin-left:auto}
+#legend b{font-weight:400;color:var(--ink-2);margin-left:0;line-height:1.45}
 .sw{width:11px;height:11px;flex:none;display:inline-block;position:relative}
 .sw.a{border:1px solid var(--ally);background:var(--node-a-bg)}
 .sw.f{border:1px solid var(--foe);background:var(--node-f-bg)}
@@ -319,8 +323,11 @@ canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:100%;max-widt
 .lg-turn{margin:.55rem 0 .2rem;font-family:var(--mono);font-size:var(--fs-1);
   color:var(--gold);letter-spacing:.12em;border-top:1px solid var(--rule);padding-top:.35rem}
 .lg-turn:first-child{border-top:0;margin-top:0}
-.lg-row{display:grid;grid-template-columns:4.2rem 1.8rem 3.4rem minmax(0,1fr);
-  gap:.4rem;align-items:baseline;padding:.1rem 0}
+/* 264px 열에서는 이름·줄·카드·행동을 한 줄에 못 눕힌다 — 행동 칸이 6자밖에 안 남아
+   매 줄이 접혔다. 윗줄에 누가·몇 번·무슨 카드, 아랫줄에 무엇을 했는지. 두 줄이 정형이다. */
+.lg-row{display:grid;grid-template-columns:3.9rem 1.6rem minmax(0,1fr);
+  gap:.05rem .4rem;align-items:baseline;padding:.16rem 0}
+.lg-act{grid-column:1/-1;padding-left:.15rem}
 .lg-row .lg-who{font-size:var(--fs-1)}
 .lg-row.a .lg-who{color:var(--ally)}
 .lg-row.f .lg-who{color:var(--foe)}
@@ -351,7 +358,22 @@ canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:100%;max-widt
 #setpick button:hover{color:var(--ink);border-color:var(--ink-3)}
 #setpick button[aria-current=true]{color:var(--bg);background:var(--ally);border-color:var(--ally)}
 
-#controls{display:flex;gap:8px;margin-top:10px;align-items:center}
+/* 지시서 아래(우측 열 320px)로 옮겼다. 가로 한 줄로는 네 개가 안 들어간다.
+   개시는 다른 둘과 격이 다르므로 전폭 한 줄을 준다. */
+/* 판 아래. 개시가 주된 행동이라 넓게, 재시도는 그 절반. */
+#controls{display:grid;grid-template-columns:2fr 1fr;gap:8px;margin-top:10px}
+#controls>.btn{width:100%;text-align:center;justify-content:center;white-space:nowrap}
+#controls>.btn.go{padding:.62rem}
+#speed{display:flex;align-items:center;margin-left:0}
+/* 초기화 = 지시서 머리의 ✕ 하나. 글자 없이 기호만 남기는 대신,
+   테두리·바탕을 줘서 장식이 아니라 누르는 물건임이 보이게 한다. */
+.phr{display:flex;align-items:center;gap:.7rem}
+#wipe{font:inherit;font-size:var(--fs-1);font-family:var(--mono);line-height:1;
+  background:var(--panel-2);border:1px solid var(--rule);border-radius:2px;
+  padding:.22rem .5rem;cursor:pointer;color:var(--ink-2);
+  transition:border-color .12s,color .12s}
+#wipe:hover{color:var(--foe);border-color:var(--foe)}
+#wipe:active{transform:translateY(1px)}
 .btn{
   padding:.52rem 1.1rem;border:1px solid var(--rule);font-size:var(--fs-3);
   letter-spacing:.08em;transition:border-color .15s,color .15s;
@@ -389,6 +411,27 @@ canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:100%;max-widt
   font-size:var(--fs-1);color:var(--ink-3);font-variant-numeric:tabular-nums;
 }
 .slot .nm{font-size:var(--fs-3);color:var(--ink);display:block;letter-spacing:.06em;font-weight:600}
+
+/* 지시서도 손패와 같은 정사각 카드로, 가로로 눕힌다.
+   왼쪽부터 읽는다는 규칙이 배치 자체로 드러난다 — 세로로 쌓으면 순서를
+   번호로만 알 수 있지만, 가로로 놓으면 눈이 먼저 읽는 방향이 곧 순서다. */
+#slots{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+/* 이름 글자를 화면에서 뺐다 — 그림이 곧 이름이다. 대신 텍스트는 남겨 둔다(.vh):
+   검증 하네스가 슬롯 이름으로 지시서를 대조하고, 스크린리더도 이 글자로 읽는다. */
+#slots .slot{aspect-ratio:1;display:grid;place-items:center;align-content:center;gap:2px;
+  padding:.85rem .1rem .95rem;position:relative;margin-bottom:0;min-height:0;overflow:hidden}
+#slots .slot .num{left:0;right:0;top:.18rem;text-align:center;font-size:9px}
+/* 이름이 빠진 자리를 그림과 스왑 버튼이 나눠 가진다. 아이콘 4배 = 36px. */
+#slots .slot .cico{width:36px;height:36px;margin:0;vertical-align:0}
+#slots .slot .nm{font-size:11px;letter-spacing:0;white-space:nowrap;line-height:1.1}
+#slots .slot:not(.empty) .nm{position:absolute;width:1px;height:1px;overflow:hidden;
+  clip:rect(0 0 0 0);white-space:nowrap}
+#slots .slot.empty{border-style:dashed}
+#slots .slot.empty .nm{font-size:9.5px;color:var(--ink-3)}
+/* 스왑이 이 판의 주된 조작이다. 눌리는 면적을 키운다. */
+#slots .arrows{left:0;right:0;bottom:.18rem;top:auto;
+  flex-direction:row;justify-content:center;gap:8px}
+#slots .arrows button{font-size:11px;padding:1px 8px;line-height:1.35;min-width:0}
 /* 조건 → 행동. 카드 생김새가 규칙의 형태와 같아야 한 눈에 읽힌다 */
 .rule{display:block;font-size:var(--fs-2);line-height:1.5;margin-top:.15rem}
 .rule .w{color:var(--ink-3)}
@@ -408,6 +451,41 @@ canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:100%;max-widt
 .hand-card:hover:not(:disabled){border-color:var(--ally)}
 .hand-card .nm{font-size:var(--fs-3);color:var(--ink);display:block;letter-spacing:.06em;font-weight:600}
 
+/* 손패는 공용 · 역할 전용 두 무리로 나뉜다. 전용 줄에 금빛 테를 둘러
+   "이건 이 대원만 쓸 수 있다"를 글자보다 먼저 읽게 한다.
+   지원만 전용이 두 장이라, 무리의 크기 차이가 곧 역할의 차이가 된다. */
+.handlabel{font-family:var(--mono);font-size:var(--fs-1);color:var(--ink-3);
+  letter-spacing:.11em;text-transform:uppercase;margin:.55rem 0 .3rem}
+.handlabel:first-child{margin-top:0}
+.handrow.own .hand-card{border-color:#6b5426}
+.handrow.own .hand-card:hover:not(:disabled){border-color:var(--gold)}
+
+/* 손패는 정사각 그림 카드다. 카드 안에 설명을 넣지 않고, 손을 올리거나
+   탭으로 옮기면 아래 상세 칸에 뜬다 — 열 하나에 다섯 장의 설명을 세로로
+   쌓으면 그것만으로 580px 을 먹는다. */
+#hand .handrow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+#hand .hand-card{aspect-ratio:1;display:grid;place-items:center;align-content:center;
+  gap:3px;padding:.25rem;margin-bottom:0;text-align:center}
+/* 아이콘 원본이 9px 이라 정수 배율로만 키운다. 5배 = 45px.
+   비정수 배율은 화질을 잃고 용량만 는다. */
+#hand .hand-card .cico{width:45px;height:45px;margin:0;vertical-align:0}
+/* 이름 글자는 화면에서 뺀다 — 그림만 남는다. 무슨 카드인지는 손을 올리면
+   아래 상세 칸이 말해 준다. 텍스트 자체는 남긴다(하네스·스크린리더용). */
+#hand .hand-card .tmpnm{position:absolute;width:1px;height:1px;overflow:hidden;
+  clip:rect(0 0 0 0);white-space:nowrap}
+#hand .hand-card .rule{display:none}
+
+/* 카드 한 장과 같은 높이로 맞춘다 — 카드 박스와 설명 박스가 같은 크기여야
+   둘이 한 벌로 읽히고, 카드가 바뀔 때 아래가 흔들리지 않는다. */
+#carddetail{margin-top:5px;padding:.45rem .55rem;background:var(--sunk);
+  border:1px solid var(--rule);min-height:71px;
+  display:flex;flex-direction:column;justify-content:center}
+#carddetail .dn{display:block;font-size:var(--fs-2);font-weight:600;color:var(--gold);margin-bottom:2px}
+/* 가장 긴 문안(26자)이 한 줄에 들어가는 크기다. 줄바꿈이 생기면 이 칸의 높이가
+   카드마다 달라지고, 그러면 아래 것들이 위아래로 흔들린다. */
+#carddetail .dr{font-size:10.5px;color:var(--ink-2);line-height:1.4}
+#carddetail .none{font-size:var(--fs-1);color:var(--ink-3);line-height:1.4}
+
 /* 적 지시서 */
 .foe-slot{
   display:flex;gap:.5rem;align-items:baseline;padding:.34rem .55rem;
@@ -421,14 +499,42 @@ canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:100%;max-widt
 
 /* 부대 */
 .squad{display:flex;flex-direction:column;gap:.3rem}
-.mem{display:grid;grid-template-columns:auto 3.4rem minmax(0,1fr) auto;
-     align-items:center;gap:.6rem;font-size:var(--fs-2)}
-.mem canvas{width:52px;height:52px;flex:none;max-width:none;image-rendering:pixelated}
-.mem .nm{color:var(--ink)}
-.mem .tr{color:var(--ink-3);font-size:var(--fs-1);min-width:0;line-height:1.35;
-         overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.mem .hp{font-family:var(--mono);font-size:var(--fs-1);white-space:nowrap;letter-spacing:.1em}
+/* 야근조 항목은 버튼이다 — 누르면 그 대원의 지시서로 넘어간다.
+   초상 왼쪽, 오른쪽에 이름·진행도 / 체력 / 특성 세 줄. 한 줄에 몰면 잘린다. */
+.mem{display:grid;grid-template-columns:auto minmax(0,1fr) auto;
+     grid-template-areas:"por nm cnt" "por hp hp" "por tr tr";
+     align-items:center;gap:0 .5rem;font-size:var(--fs-2);
+     width:100%;text-align:left;background:var(--sunk);border:1px solid var(--rule);
+     padding:.3rem .45rem;cursor:pointer;color:inherit;font-family:inherit;
+     transition:border-color .12s,background .12s}
+.mem:hover:not(.on){border-color:var(--ink-3)}
+.mem.on{border-color:var(--ally);background:#1d2736}
+.mem .cnt{grid-area:cnt;font-family:var(--mono);font-size:var(--fs-1);color:var(--ink-3);
+     white-space:nowrap;font-variant-numeric:tabular-nums}
+.mem.done .cnt{color:var(--gold)}
+#squadhint{font-size:var(--fs-1);text-transform:none;letter-spacing:0}
+.mem canvas{grid-area:por;width:42px;height:42px;flex:none;max-width:none;image-rendering:pixelated}
+.mem .nm{grid-area:nm;color:var(--ink)}
+.mem .tr{grid-area:tr;color:var(--ink-3);font-size:var(--fs-1);min-width:0;line-height:1.35;
+         align-self:start}
+.mem .hp{grid-area:hp;font-family:var(--mono);font-size:var(--fs-1);white-space:nowrap;letter-spacing:.1em}
 .mem.dead{opacity:.3}
+
+/* 이 밤에 있는 것 — 판을 보기 "전에" 읽는 정보라 기록보다 위에 둔다.
+   줄 머리에 판 위의 실물과 같은 기호를 단다. 글로 "거점"이라 읽기 전에
+   금색 칸이 먼저 눈에 들어와야, 판에서 그 칸을 바로 찾는다. */
+#gimmick{display:grid;gap:.45rem}
+.gim-row{display:grid;grid-template-columns:1.35rem auto minmax(0,1fr);
+  gap:0 .5rem;align-items:center;font-size:var(--fs-1);line-height:1.45}
+.gim-row .gi{display:flex;align-items:center;justify-content:center}
+.gim-row .gi canvas{width:18px;height:18px;image-rendering:pixelated}
+.gim-row b{color:var(--ink);font-weight:500;white-space:nowrap}
+/* keep-all: 줄이 꺾여도 어절 단위로 꺾인다. "유/지" 처럼 단어가 두 동강 나면
+   좁은 열에서는 오독이 된다. */
+.gim-row .gd{color:var(--ink-3);min-width:0;word-break:keep-all}
+.gt{font-family:var(--mono);font-size:9px;color:var(--gold);
+    border:1px solid var(--gold);border-radius:2px;padding:1px 3px;line-height:1}
+
 
 .note{font-size:var(--fs-2);color:var(--ink-3);line-height:1.55;margin-top:.5rem}
 #toast{
@@ -549,17 +655,51 @@ canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:100%;max-widt
 </section>
 
 <section id="game">
+  <!-- 좌: 참조. 판을 보기 "전에" 읽는 것과, 개시 "후에" 읽는 것을 한쪽에 모은다. -->
+  <aside id="refcol">
+    <div class="panel">
+      <div class="phead"><span>허상의 지시서</span><span id="revcount"></span></div>
+      <!-- 설명을 달지 않는다. 한 판만 돌려 보면 한 칸씩 열리는 걸 스스로 알게 된다. -->
+      <div class="pbody"><div id="foeslots"></div></div>
+    </div>
+
+    <div class="panel" style="margin-top:12px">
+      <div class="phead"><span>이 밤에 있는 것</span></div>
+      <!-- 판 아래에 있던 색 견본을 여기로 합쳤다. 「이 밤이 어떻게 생겼나」와
+           「판 위의 색이 무슨 뜻인가」는 같은 일이라 두 군데 있을 이유가 없다. -->
+      <div class="pbody"><div id="gimmick"></div>
+        <div id="legend">
+          <span><i class="sw a"></i>우리 거점</span>
+          <span><i class="sw f"></i>적 거점</span>
+          <span><i class="sw n"></i>빈 거점</span>
+          <span><i class="sw cut"></i>점수 끊김</span>
+          <span class="wallonly"><i class="sw wall"></i>벽 · 못 지나감</span>
+          <b>거점 1곳 = 매 턴 1점 · 옆에 적이 붙으면 그 턴은 0점</b>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:12px" id="logpanel">
+      <div class="phead"><span>기록</span></div>
+      <div class="pbody"><div id="log" role="log" aria-live="polite"></div></div>
+    </div>
+  </aside>
+
   <main>
+    <!-- 한 줄로 합친다. 좌 = 어느 밤인가 · 가운데 = 점수 · 우 = 몇 턴 남았나.
+         세 가지가 전부 "지금 판이 어떤 상태인가"라 시선이 두 번 내려갈 이유가 없다. -->
     <header id="stagebar">
       <span id="stagename"></span>
+      <div id="scores">
+        <span id="sa">0</span>
+        <div class="sbar a"><i></i></div>
+        <div class="sbar f"><i></i></div>
+        <span id="sf">0</span>
+      </div>
       <span id="turnbox"></span>
+      <!-- 재생 속도는 판이 도는 빠르기지 지시서 작성과는 상관이 없다. 판 위로 올린다. -->
+      <span id="speed"><button class="btn" id="spd" style="padding:.2rem .6rem">1x</button></span>
     </header>
-    <div id="scores">
-      <span id="sa">0</span>
-      <div class="sbar a"><i></i></div>
-      <div class="sbar f"><i></i></div>
-      <span id="sf">0</span>
-    </div>
     <div id="stage-wrap">
       <canvas id="cv" width="136" height="136" role="img"
               aria-label="5×5 전술 판. 진행 상황은 아래 기록에 글로 남습니다."></canvas>
@@ -570,43 +710,32 @@ canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:100%;max-widt
         <button class="btn" id="bre" hidden>야근조 다시 짜기</button>
       </div>
     </div>
-    <div id="legend">
-      <span><i class="sw a"></i>우리 거점</span>
-      <span><i class="sw f"></i>적 거점</span>
-      <span><i class="sw n"></i>빈 거점</span>
-      <span><i class="sw cut"></i>점수 끊김</span>
-      <span class="wallonly"><i class="sw wall"></i>벽 · 못 지나감</span>
-      <b>거점 1곳 = 매 턴 1점 · 옆에 적이 붙으면 그 턴은 0점</b>
-    </div>
+    <!-- 개시와 재시도는 판을 움직이는 버튼이다. 판 아래가 제자리다. -->
     <div id="controls">
       <button class="btn go" id="run">▶ 개시</button>
-      <button class="btn" id="reset" title="지시서는 그대로 두고 판만 처음으로">↺ 다시</button>
-      <button class="btn" id="wipe" title="네 줄을 모두 비우고 처음부터 쓴다">✕ 지우기</button>
-      <span id="speed"><button class="btn" id="spd" style="padding:.3rem .7rem">1x</button></span>
+      <button class="btn" id="reset" title="지시서는 그대로 두고 판만 처음으로">↺ 재시도</button>
     </div>
-    <div id="log" role="log" aria-live="polite"></div>
   </main>
 
-  <aside>
+  <!-- 우: 작성. 지시서를 짜고 개시하는 곳. 버튼은 지시서 바로 아래에 둔다 —
+       지시서 작성을 마친 손이 그대로 이어지는 자리다. -->
+  <aside id="writecol">
     <div class="panel">
-      <div class="phead"><span>지시서</span><span id="slotcount"></span></div>
-      <div class="pbody"><div id="chartabs" role="tablist" aria-label="대원별 지시서"></div><div id="slots"></div></div>
+      <!-- 야근조가 곧 지시서 탭이다. 이름을 두 번 늘어놓을 이유가 없고,
+           지시서를 쓰는 대상은 대원이므로 대원 목록은 「참조」가 아니라 「작성」에 속한다. -->
+      <div class="phead"><span>야근조</span><span id="squadhint">누구의 지시서를 쓸지 고릅니다</span></div>
+      <div class="pbody"><div class="squad" id="squad" role="tablist" aria-label="대원별 지시서"></div></div>
+      <!-- 초기화는 지시서를 비우는 일이므로 지시서 머리에 작게 둔다.
+           전폭 버튼은 줄 하나를 통째로 먹는다 — 그 자리는 카드가 쓰는 게 맞다. -->
+      <div class="phead" style="border-top:1px solid var(--rule)"><span>지시서</span>
+        <span class="phr"><span id="slotcount"></span>
+        <button id="wipe" aria-label="초기화" title="초기화 — 네 칸을 모두 비우고 처음부터 쓴다">✕</button></span></div>
+      <div class="pbody"><div id="slots"></div></div>
       <div class="phead" style="border-top:1px solid var(--rule)"><span>남은 카드</span></div>
+      <!-- 설명은 카드 쪽에 둔다. 지시서 칸에 손을 올려도 여기에 뜬다. -->
       <div class="pbody"><div id="hand"></div>
-        <div class="note">위에서부터 읽다가 조건이 맞는 첫 줄만 실행합니다. 아래 줄은 읽지 않습니다.</div>
+        <div id="carddetail"></div>
       </div>
-    </div>
-
-    <div class="panel" style="margin-top:12px">
-      <div class="phead"><span>허상의 지시서</span><span id="revcount"></span></div>
-      <div class="pbody"><div id="foeslots"></div>
-        <div class="note">허상이 실제로 그 줄을 쓴 순간에만 한 칸씩 열립니다.</div>
-      </div>
-    </div>
-
-    <div class="panel" style="margin-top:12px">
-      <div class="phead"><span>야근조</span></div>
-      <div class="pbody"><div class="squad" id="squad"></div></div>
     </div>
   </aside>
 </section>
@@ -988,20 +1117,20 @@ let ACTIVE=[0,1,3];
 /* 카드는 본질이 IF-THEN 규칙이다. 이름은 명령어 한 단어, 설명은 조건과 행동으로 쪼갠다.
    설명을 쉽게 쓰는 것보다 설명의 형태를 규칙과 일치시키는 쪽이 빨리 읽힌다. */
 const CARDS={
-  strike:{name:'공격', line:'사거리 안에 적이 있으면 가장 약한 적을 공격합니다', when:'사거리 안에 적이 있으면', then:'가장 약한 적을 친다',
+  strike:{name:'공격', line:'사거리 내 가장 체력 낮은 적 공격', when:'사거리 안에 적이 있으면', then:'가장 약한 적을 친다',
     plan(s,u){
       if(u.cdLeft>0) return null;          // 미오: 쏘고 나면 한 턴 재장전
       const t=targets(s,u).sort((a,b)=>a.hp-b.hp||a.i-b.i)[0];
       return t?{k:'atk',t}:null;
     }},
-  seize:{name:'점령', line:'내 것이 아닌 거점이 있으면 가장 가까운 쪽으로 한 칸 갑니다', when:'내 것이 아닌 거점이 있으면', then:'가장 가까운 거점으로 한 칸',
+  seize:{name:'점령', line:'미 점령 거점 중 가장 가까운 쪽으로 이동', when:'내 것이 아닌 거점이 있으면', then:'가장 가까운 거점으로 한 칸',
     plan(s,u){
       const g=s.nodes.filter(n=>n.owner!==u.side);
       if(!g.length)return null;
       if(g.some(n=>n.x===u.x&&n.y===u.y))return {k:'wait'};
       const m=stepToward(s,u,g); return m?{k:'mv',...m}:null;
     }},
-  retreat:{name:'후퇴', line:'체력이 절반 이하이고 적이 2칸 안이면 먼 쪽으로 한 칸 물러납니다', when:'체력이 절반 이하이고 적이 2칸 안이면', then:'적에게서 먼 쪽으로 한 칸',
+  retreat:{name:'후퇴', line:'체력 절반 이하 및 적 근처 존재 시 뒤로 이동', when:'체력이 절반 이하이고 적이 2칸 안이면', then:'적에게서 먼 쪽으로 한 칸',
     plan(s,u){
       if(u.hp*2>u.max)return null;
       const e=alive(s).filter(v=>v.side!==u.side);
@@ -1014,7 +1143,7 @@ const CARDS={
       }
       return best?{k:'mv',...best}:null;
     }},
-  hold:{name:'주둔', line:'내 거점이 있고 옆에 적이 없으면 그 거점으로 가서 지킵니다', when:'내 거점이 있고 옆에 적이 없으면', then:'그 거점으로 가서 머문다',
+  hold:{name:'주둔', line:'점령 거점 존재 및 근처 적 없을 시 거점으로 이동', when:'내 거점이 있고 옆에 적이 없으면', then:'그 거점으로 가서 머문다',
     plan(s,u){
       // 적이 코앞이면 "지킨다"는 할 말이 없는 카드다. 아래 줄로 넘긴다.
       if(alive(s).some(v=>v.side!==u.side&&md(v,u)<=1))return null;
@@ -1023,14 +1152,14 @@ const CARDS={
       if(g.some(n=>n.x===u.x&&n.y===u.y))return {k:'wait'};
       const m=stepToward(s,u,g); return m?{k:'mv',...m}:null;
     }},
-  chase:{name:'추격', line:'판에 적이 남아 있으면 가장 가까운 적 옆으로 한 칸 갑니다', when:'판에 적이 남아 있으면', then:'가장 가까운 적 옆으로 한 칸',
+  chase:{name:'추격', line:'필드에 적 존재 시 가장 가까운 적으로 이동', when:'판에 적이 남아 있으면', then:'가장 가까운 적 옆으로 한 칸',
     plan(s,u){
       const e=alive(s).filter(v=>v.side!==u.side); if(!e.length)return null;
       const g=[]; for(const v of e) for(const c of adj(v)) if(!blocked(s,c,u)) g.push(c);
       if(!g.length)return null;
       const m=stepToward(s,u,g); return m?{k:'mv',...m}:null;
     }},
-  rally:{name:'집결', line:'아군과 떨어져 있으면 가장 가까운 아군 옆으로 한 칸 갑니다', when:'아군과 떨어져 있으면', then:'가장 가까운 아군 옆으로 한 칸',
+  rally:{name:'집결', line:'가장 근접한 아군으로 이동', when:'아군과 떨어져 있으면', then:'가장 가까운 아군 옆으로 한 칸',
     plan(s,u){
       const f=alive(s).filter(v=>v.side===u.side&&v!==u); if(!f.length)return null;
       if(f.some(v=>md(v,u)===1))return {k:'wait'};
@@ -1040,7 +1169,7 @@ const CARDS={
     }},
   /* 점수 끊김을 손으로 풀게 하는 카드. 주둔은 "적이 없을 때"만 걸리므로
      끊긴 거점 앞에서는 아무 말도 못 한다. 저지는 그 반대편을 맡는다. */
-  block:{name:'저지', line:'내 거점에 적이 붙어 있으면 그 적 쪽으로 한 칸 갑니다', when:'내 거점에 적이 붙어 있으면', then:'그 적 쪽으로 한 칸',
+  block:{name:'저지', line:'점령 거점에 적 존재 시 그 적 쪽으로 이동', when:'내 거점에 적이 붙어 있으면', then:'그 적 쪽으로 한 칸',
     plan(s,u){
       const mine=s.nodes.filter(n=>n.owner===u.side); if(!mine.length)return null;
       const bad=alive(s).filter(v=>v.side!==u.side&&mine.some(n=>md(v,n)<=1));
@@ -1055,7 +1184,7 @@ const CARDS={
   /* ── 역할군 전용 세 장 ──
      사수는 붙으면 죽고, 지원은 직접 안 싸우며, 전위는 몸으로 막는다.
      그 차이를 능력치뿐 아니라 '쓸 수 있는 줄'로도 갈라 놓는다. */
-  kite:{name:'거리두기', line:'적이 옆에 붙으면 먼 쪽으로 한 칸 물러납니다', when:'적이 옆에 붙으면', then:'먼 쪽으로 한 칸',
+  kite:{name:'거리두기', line:'적이 옆에 붙을 시 먼 쪽으로 이동', when:'적이 옆에 붙으면', then:'먼 쪽으로 한 칸',
     plan(s,u){
       const e=alive(s).filter(v=>v.side!==u.side);
       if(!e.some(v=>md(v,u)<=1))return null;
@@ -1066,7 +1195,7 @@ const CARDS={
       }
       return best?{k:'mv',...best}:null;
     }},
-  mend:{name:'치료', line:'다친 아군이 2칸 안에 있으면 치료하고, 없으면 다가갑니다', when:'다친 아군이 2칸 안에 있으면', then:'치료 · 아니면 한 칸 다가감',
+  mend:{name:'치료', line:'근처 체력 감소한 아군 존재 시 치료', when:'다친 아군이 2칸 안에 있으면', then:'치료 · 아니면 한 칸 다가감',
     plan(s,u){
       /* 사거리가 1이던 때는 "다친 아군이 존재"(턴의 25%)가 "옆에 있다"(6.9%)로
          3.6배 깎여 카드가 사실상 안 걸렸다. 2칸이면 닿는 칸이 4개에서 12개로 는다. */
@@ -1085,7 +1214,7 @@ const CARDS={
      쓰러짐이 플레이어가 못 막는 사건이라 거기에 대가를 물리면 그냥 세금이 된다.
      대신 되돌릴 수단을 주고, 그 수단을 네 줄 중 한 자리와 맞바꾸게 한다.
      한 사람당 한 밤에 한 번뿐인 이유는 무한 소생이 16턴을 늘려버리기 때문이다. */
-  rescue:{name:'구조', line:'쓰러진 아군이 2칸 안에 있으면 체력 절반으로 일으켜 옆으로 데려옵니다', when:'쓰러진 아군이 2칸 안에 있으면', then:'절반 체력으로 일으켜 내 옆으로 · 아니면 한 칸 다가감',
+  rescue:{name:'구조', line:'근처 쓰러진 아군 존재 시 부활', when:'쓰러진 아군이 2칸 안에 있으면', then:'절반 체력으로 일으켜 내 옆으로 · 아니면 한 칸 다가감',
     plan(s,u){
       const down=s.units.filter(v=>v.side===u.side&&v.hp<=0&&!v.rescued);
       if(!down.length)return null;
@@ -1097,7 +1226,7 @@ const CARDS={
       if(!g.length)return null;
       const m=stepToward(s,u,g); return m?{k:'mv',...m}:null;
     }},
-  cover:{name:'엄호', line:'체력이 절반 이하인 아군이 있으면 그 아군 옆으로 한 칸 갑니다', when:'체력이 절반 이하인 아군이 있으면', then:'그 아군 옆으로 한 칸',
+  cover:{name:'엄호', line:'체력 절반 이하 아군 존재 시 그 옆으로 이동', when:'체력이 절반 이하인 아군이 있으면', then:'그 아군 옆으로 한 칸',
     plan(s,u){
       const hurt=alive(s).filter(v=>v.side===u.side&&v!==u&&v.hp*2<=v.max);
       if(!hurt.length)return null;
@@ -1794,13 +1923,21 @@ function paintSlots(ev){
     const b=document.createElement('button');
     b.className='slot'+(id?'':' empty')+(id&&firedCards.has(id)?' fired':'');
     if(!id){ b.innerHTML='<span class="num">'+String(i+1).padStart(2,'0')+
-             '</span><span class="nm">— 비어 있음 —</span>'; }
+             '</span><span class="nm">비어 있음</span>'; }
     else{
+      /* 설명을 줄마다 달면 네 줄이 열의 3분의 1을 먹는다. 손을 올린 줄의 설명만
+         아래 상세 칸에 띄운다 — 네 줄을 나란히 놓고 조건을 견주는 일은
+         이름만으로도 되고, 정확한 조건은 한 줄씩 확인하면 된다. */
+      /* 그림을 이름 밖으로 뺀다 — 손패 카드와 같은 구조(그림 위, 이름 아래)가 된다. */
       b.innerHTML='<span class="num">'+String(i+1).padStart(2,'0')+'</span>'+
-        '<span class="nm">'+iconHtml(id)+CARDS[id].name+'</span>'+ruleHtml(id)+
+        iconHtml(id)+'<span class="nm">'+CARDS[id].name+'</span>'+
         // 빈 슬롯과는 자리를 바꿀 수 없다. 바꾸면 채워진 줄 사이에 구멍이 생긴다.
-        '<span class="arrows"><button data-up="'+i+'"'+(i===0?' disabled':'')+'>▲</button>'+
-        '<button data-dn="'+i+'"'+(i===3||!order[i+1]?' disabled':'')+'>▼</button></span>';
+        // 가로로 누웠으니 화살표도 좌우다.
+        '<span class="arrows"><button data-up="'+i+'"'+(i===0?' disabled':'')+'>◀</button>'+
+        '<button data-dn="'+i+'"'+(i===3||!order[i+1]?' disabled':'')+'>▶</button></span>';
+      b.title=CARDS[id].name+' — '+CARDS[id].line;
+      b.onmouseenter=()=>showCard(id);
+      b.onfocus=()=>showCard(id);
       b.onclick=e=>{ if(e.target.dataset.up!==undefined||e.target.dataset.dn!==undefined)return;
                      if(anim.playing||st&&st.turn>0)return;
                      hand.push(order[i]); order[i]=null; compact(); paintAll(); };
@@ -1821,15 +1958,44 @@ function compact(){ const f=order.filter(Boolean); order=[f[0]||null,f[1]||null,
 function paintHand(){
   const el=$('hand'); el.innerHTML='';
   if(!hand.length){ el.innerHTML='<div class="note" style="margin:0">카드를 모두 배치했습니다.</div>'; return; }
-  for(const id of hand){
+  const mkCard=id=>{
     const b=document.createElement('button');
     b.className='hand-card';
-    b.innerHTML='<span class="nm">'+iconHtml(id)+CARDS[id].name+'</span>'+ruleHtml(id);
+    b.title=CARDS[id].name+' — '+CARDS[id].line;
+    /* 카드 안에는 그림과 이름만 둔다. 설명은 손을 올리면 아래 상세 칸에 뜬다.
+       이름은 아직 임시다 — 카드 그림이 들어오면 그림만으로 알아보게 하고 뺀다. */
+    b.innerHTML=iconHtml(id)+'<span class="tmpnm">'+CARDS[id].name+'</span>';
     b.disabled = order.filter(Boolean).length>=4 || (st&&st.turn>0);
     b.onclick=()=>{ const i=order.indexOf(null); if(i<0)return;
                     order[i]=id; hand=hand.filter(h=>h!==id); paintAll(); };
-    el.appendChild(b);
-  }
+    b.onmouseenter=()=>showCard(id);
+    b.onfocus=()=>showCard(id);
+    return b;
+  };
+  /* 공용 카드와 역할 전용 카드를 갈라 놓는다. 지원만 전용이 두 장이라
+     "역할마다 쓸 수 있는 줄이 다르다"는 사실이 목록 모양 자체로 드러난다.
+     지원은 직접 싸우지 않으므로 네 줄 중 몇 줄을 남 살리는 데 쓸지가 그 역할의 전부다. */
+  const role=ROSTER[ACTIVE[sel]].role, own=new Set(ROLE_CARD[role]||[]);
+  const group=(ids,label,cls)=>{
+    if(!ids.length)return;
+    const h=document.createElement('div'); h.className='handlabel'; h.textContent=label;
+    el.appendChild(h);
+    const row=document.createElement('div'); row.className='handrow'+(cls?' '+cls:'');
+    for(const id of ids) row.appendChild(mkCard(id));
+    el.appendChild(row);
+  };
+  group(hand.filter(id=>!own.has(id)),'공용','');
+  group(hand.filter(id=>own.has(id)),role+' 전용','own');
+  showCard(null);
+}
+
+/* 손패 카드의 설명 자리. 카드마다 설명을 달면 다섯 장이 열의 절반을 먹는다.
+   한 칸을 돌려 쓰면 그 자리가 한 번만 있으면 된다. */
+function showCard(id){
+  const d=$('carddetail'); if(!d)return;
+  d.innerHTML = id
+    ? '<span class="dn">'+CARDS[id].name+'</span><span class="dr">'+CARDS[id].line+'</span>'
+    : '<span class="none">지시서의 줄이나 아래 카드에 손을 올리면 무엇을 하는지 여기에 나옵니다.</span>';
 }
 
 function paintFoe(){
@@ -1845,18 +2011,26 @@ function paintFoe(){
   $('revcount').textContent=n+' / 4';
 }
 
+/* 야근조 목록이 곧 지시서 탭이다 — 누구의 지시서를 쓰는지 고르는 자리와
+   그 사람이 어떤 사람인지 보는 자리가 같아야, 특성을 보면서 줄을 짤 수 있다. */
 function paintSquad(){
   const el=$('squad'); el.innerHTML='';
-  for(const u of st.units.filter(u=>u.side==='ally')){
+  st.units.filter(u=>u.side==='ally').forEach((u,k)=>{
     const r=ROSTER.find(r=>r.key===u.key);
-    const d=document.createElement('div');
-    d.className='mem'+(u.hp<=0?' dead':'');
+    const filled=orders[k].filter(Boolean).length;
+    const d=document.createElement('button');
+    d.className='mem'+(u.hp<=0?' dead':'')+(k===sel?' on':'')+(filled===4?' done':'');
+    d.setAttribute('role','tab');
+    d.setAttribute('aria-selected',k===sel?'true':'false');
+    d.onclick=()=>selectChar(k);
+    const n=document.createElement('span'); n.className='cnt'; n.textContent=filled+' / 4';
     const c=document.createElement('canvas'); c.width=c.height=32;
     // 쓰러진 대원은 팔레트를 회색으로 갈아끼운다 (스프라이트는 그대로)
     drawPortrait(c.getContext('2d'),u.key,0,0,
       u.hp>0?null:new Proxy({},{get:(_,g)=>g==='.'?null:(g==='L'?TH.deadLine:TH.deadFill)}));
     d.appendChild(c);
     const s=document.createElement('span'); s.className='nm'; s.textContent=u.name; d.appendChild(s);
+    d.appendChild(n);
     const t=document.createElement('span'); t.className='tr'; t.textContent=r.trait; d.appendChild(t);
     const h=document.createElement('span'); h.className='hp';
     h.style.color=u.hp>0?TH.ally:TH.hpEmpty;
@@ -1865,7 +2039,33 @@ function paintSquad(){
                   : (u.rescued ? '전선 이탈' : '쓰러짐 · 구조 가능');
     d.appendChild(h);
     el.appendChild(d);
-  }
+  });
+}
+
+/* 「이 밤에 무엇이 있는가」 — 판을 보기 전에 읽는 정보다.
+   설명만 있고 판에서 못 찾으면 설명이 아니므로, 여기 적는 것은 전부 판 위에 표시가 있다. */
+function paintGimmick(){
+  const el=$('gimmick'); if(!el||!st)return;
+  const S=STAGES[st.si]||{}, W=(S.walls||[]).length;
+  const foes=st.units.filter(u=>u.side==='foe');
+  const mine=st.nodes.filter(n=>n.owner==='ally').length;
+  el.innerHTML='';
+  const row=(icon,kw,desc)=>{
+    const d=document.createElement('div'); d.className='gim-row';
+    d.innerHTML='<span class="gi">'+icon+'</span><b>'+kw+'</b><span class="gd">'+desc+'</span>';
+    el.appendChild(d); return d;
+  };
+  row('<i class="sw n"></i>','거점 ×'+st.nodes.length,
+      (st.turn>0?'내 것 '+mine+' · ':'')+'밟으면 내 것, 떠나도 유지');
+  // 허상 줄에는 판 위의 그 스프라이트를 그대로 쓴다. 같은 얼굴이어야 같은 것으로 읽힌다.
+  const fr=row('','허상 ×'+foes.length,
+      '체력 '+(foes.length?foes[0].max:2)+' · 공격 2 · 쓰러져도 2턴 뒤 복귀');
+  const c=document.createElement('canvas'); c.width=c.height=32;
+  drawPortrait(c.getContext('2d'),'foe',0,0);
+  fr.querySelector('.gi').appendChild(c);
+  row(W?'<i class="sw wall"></i>':'<i class="sw wall" style="opacity:.3"></i>',
+      W?'벽 ×'+W:'벽 없음', W?'지나갈 수 없다':'판이 트여 있다');
+  row('<span class="gt">'+MAXTURN+'T</span>',MAXTURN+'턴 안에','거점 점수로 앞서면 승리');
 }
 
 function paintScores(){
@@ -1874,7 +2074,7 @@ function paintScores(){
   const scale=v=>Math.min(1,v/m*2.2);
   document.querySelector('.sbar.a i').style.transform='scaleX('+scale(st.score.ally)+')';
   document.querySelector('.sbar.f i').style.transform='scaleX('+scale(st.score.foe)+')';
-  $('turnbox').textContent='TURN '+String(st.turn).padStart(2,'0')+' / '+MAXTURN;
+  $('turnbox').textContent='TURN '+st.turn+' / '+MAXTURN;
 }
 
 /* 매 턴 전원의 카드를 찍으면 로그가 벽지가 된다.
@@ -1934,7 +2134,7 @@ function logTurn(ev){
   el.scrollTop=el.scrollHeight;
 }
 
-function paintAll(){ paintSlots(); paintHand(); paintFoe(); paintSquad(); paintScores();
+function paintAll(){ paintSlots(); paintHand(); paintFoe(); paintSquad(); paintGimmick(); paintScores();
   $('run').disabled = !allReady() || (st&&st.turn>0);
   paintTabs(); }
 
@@ -1959,7 +2159,10 @@ function loadStage(i,keep){
   }
   order=orders[0]; hand=hands[0];
   st=makeState(i,[]); $('log').innerHTML='';
-  $('stagename').textContent=S.name;
+  /* 부제("첫 교대")를 빼고 번호만 쓴다. 밤1은 「1」과 「첫」이 같은 말이었고,
+     판 상단은 계속 쳐다보는 자리라 짧을수록 좋다. 부제는 편성 화면에 남는다 —
+     거기서는 다음 밤이 어떤 판인지 미리 알리는 다른 일을 한다. */
+  $('stagename').textContent='밤 '+(stageIdx+1)+' / '+STAGES.length;
   $('legend').classList.toggle('haswall',!!(S.walls&&S.walls.length));
   $('banner').classList.remove('on');
   paintAll(); draw();
@@ -2378,13 +2581,13 @@ window.__qa=async function(){
   ok(cnt.every(v=>v===4),'세 대원 각각 4장 배치 ('+cnt.join('/')+')');
   const sig=orders.map(o=>o.filter(Boolean).join('>'));
   ok(new Set(orders.map((o,k)=>k)).size===3&&orders.length===3,'지시서가 3벌로 분리됨');
-  document.querySelectorAll('#chartabs .ctab')[1].click();
+  document.querySelectorAll('#squad .mem')[1].click();
   ok(order===orders[1],'탭 전환 시 편집 대상이 그 대원으로 바뀜');
   ok([...document.querySelectorAll('#slots .slot .nm')].map(e=>e.textContent.trim())
        .filter(t=>!/비어/.test(t)).join('>')
      === orders[1].filter(Boolean).map(c=>CARDS[c].name).join('>'),
      '슬롯 화면이 그 대원의 지시서와 일치');
-  document.querySelectorAll('#chartabs .ctab')[0].click();
+  document.querySelectorAll('#squad .mem')[0].click();
 
   // ② 개시 → 엔진 기록 vs 화면 로그
   window.__audit=[];
@@ -2543,7 +2746,7 @@ function autoPick(){
 function nextNight(){ $('bb').click(); return autoPick(); }
 
 function fillAllChars(){
-  const tabs=()=>[...document.querySelectorAll('#chartabs .ctab')];
+  const tabs=()=>[...document.querySelectorAll('#squad .mem')];
   for(let k=0;k<3;k++){
     if(tabs()[k]) tabs()[k].click();
     let g=0;
@@ -2569,7 +2772,7 @@ window.__ui=function(){
   const cnt=fillAllChars();
   ok(cnt.every(v=>v===4),'탭으로 세 사람 모두 4장 ('+cnt.join('/')+')');
   ok(!$('run').disabled,'세 사람 다 채우면 개시 열림');
-  ok(document.querySelectorAll('#chartabs .ctab').length===3,'대원 탭 3개 표시');
+  ok(document.querySelectorAll('#squad .mem').length===3,'대원 탭 3개 표시');
 
   const before=order.slice();
   document.querySelector('[data-dn="0"]').click();
@@ -2670,7 +2873,7 @@ window.__fuzz=async function(steps,seed){
       ranSinceLoad=true; $('run').click();
       await sleep(rnd()<0.35?70:1200);        // 가끔 관전 도중에 끊는다
     }});
-    document.querySelectorAll('#chartabs .ctab').forEach((b,k)=>{
+    document.querySelectorAll('#squad .mem').forEach((b,k)=>{
       a.push({n:'탭'+(k+1),f:async()=>b.click()}); });
     a.push({n:'다시',f:async()=>{ $('reset').click(); ranSinceLoad=false; }});
     return a;
