@@ -548,8 +548,12 @@ canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:100%;max-widt
 #carddetail .none{font-size:var(--fs-1);color:var(--ink-3);line-height:1.4}
 
 /* 적 지시서 */
+/* 가려진 줄(？？？？)과 열린 줄(그림+이름)의 높이가 같아야 한다.
+   열릴 때마다 아래가 밀려 내려가면 판을 보다 말고 눈이 그쪽으로 끌린다.
+   그림이 들어찬 상태(24px)를 기준으로 잡고 세로 가운데 정렬. */
 .foe-slot{
-  display:flex;gap:.5rem;align-items:baseline;padding:.34rem .55rem;
+  display:flex;gap:.5rem;align-items:center;padding:.34rem .55rem;
+  min-height:2.5rem;box-sizing:border-box;
   border:1px solid var(--rule);margin-bottom:4px;background:var(--sunk);
   font-size:var(--fs-2);
 }
@@ -567,6 +571,8 @@ canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:100%;max-widt
      align-items:center;gap:0 .5rem;font-size:var(--fs-2);
      width:100%;text-align:left;background:var(--sunk);border:1px solid var(--rule);
      padding:.3rem .45rem;cursor:pointer;color:inherit;font-family:inherit;
+     /* 체력 표시가 ♥ 다섯에서 「쓰러짐 · 구조 가능」으로 바뀌어도 줄 높이는 그대로. */
+     min-height:3.6rem;box-sizing:border-box;
      transition:border-color .12s,background .12s}
 .mem:hover:not(.on){border-color:var(--ink-3)}
 .mem.on{border-color:var(--ally);background:#1d2736}
