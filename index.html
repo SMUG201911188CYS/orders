@@ -1235,7 +1235,9 @@ const CARDS={
       if(g.some(n=>n.x===u.x&&n.y===u.y))return {k:'wait'};
       const m=stepToward(s,u,g); return m?{k:'mv',...m}:null;
     }},
-  retreat:{name:'후퇴', line:'체력 절반 이하 및 적 근처 존재 시 뒤로 이동',
+  /* 「자신 체력」— 누구의 체력인지가 모호했다(사용자 교정 2026-08-07).
+     적 체력을 보는 카드(공격)와 내 체력을 보는 카드(후퇴)가 같은 낱말을 쓰고 있었다. */
+  retreat:{name:'후퇴', line:'자신체력 절반 이하 및 적 근처 존재 시 뒤로 이동',
     plan(s,u){
       if(u.hp*2>u.max)return null;
       const e=alive(s).filter(v=>v.side!==u.side);
@@ -1298,7 +1300,7 @@ const CARDS={
      거점 옆에 있다. 없애거나·밀거나·묶는 것만이 답이다. 밀어내기는 재 보니 오히려
      나빴고(끊김 14.3→15.3%, 밀어도 다음 턴에 돌아오고 그동안 못 죽인다),
      붙들기가 가장 잘 풀면서 승률은 안 흔들었다(끊김 12.9% · 승률 10.6→10.8%). */
-  block:{name:'저지', line:'거점에 붙은 적 쪽으로 이동 · 옆이면 묶어 끊김 해제',
+  block:{name:'저지', line:'거점에 붙은 적 쪽으로 이동 및 적 묶음',
     plan(s,u){
       const mine=s.nodes.filter(n=>n.owner===u.side); if(!mine.length)return null;
       const bad=alive(s).filter(v=>v.side!==u.side&&mine.some(n=>md(v,n)<=1));
