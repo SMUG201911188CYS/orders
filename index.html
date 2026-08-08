@@ -100,7 +100,6 @@ body::after{
   align-items:center;gap:1.1rem}
 /* 크기는 #start 에만 준다. .cta 를 키우면 편성 확정·종료 배너 버튼까지 따라 커진다. */
 #start{padding:1.05rem 4rem;font-size:var(--fs-4)}
-#title #setpick{margin:0}
 
 /* 키 비주얼 — 제목 바로 아래. 주석은 달지 않는다. 그림이 스스로 말한다.
    세로로 쌓은 구성이라 그림이 크면 개시 버튼이 화면 밖으로 밀린다. 화면이 낮으면
@@ -388,14 +387,6 @@ canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:100%;max-widt
 #bre:hover{color:var(--ink);border-color:var(--ally)}
 #legend .wallonly{display:none}
 #legend.haswall .wallonly{display:inline-flex}
-/* 후보 비교용 선택기. 구성이 확정되면 이 블록과 #setpick 마크업만 지우면 된다. */
-#setpick{display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;
-  margin:1rem 0 0;font-family:var(--mono);font-size:var(--fs-1);color:var(--ink-3)}
-#setpick span{letter-spacing:.14em}
-#setpick button{font:inherit;color:var(--ink-2);background:var(--sunk);
-  border:1px solid var(--rule);padding:.32rem .62rem;cursor:pointer}
-#setpick button:hover{color:var(--ink);border-color:var(--ink-3)}
-#setpick button[aria-current=true]{color:var(--bg);background:var(--ally);border-color:var(--ally)}
 
 /* 지시서 아래(우측 열 320px)로 옮겼다. 가로 한 줄로는 네 개가 안 들어간다.
    개시는 다른 둘과 격이 다르므로 전폭 한 줄을 준다. */
@@ -671,7 +662,11 @@ canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:100%;max-widt
   <ol id="goal">
     <li><b>당신이 하는 일</b><span>대원 아홉 중 <em>셋</em>을 뽑고, 각자에게 명령 카드 네 장의 <em>순서</em>를 정해 줍니다. 그게 전부입니다.</span></li>
     <li><b>대원이 하는 일</b><span>매 턴 자기 지시서를 위에서부터 읽고, 조건이 맞는 <em>첫 줄 하나</em>만 실행합니다. 아래 줄은 읽지 않습니다.</span></li>
-    <li><b>이기는 방법</b><span>판 위의 <em>거점 세 곳</em>을 밟아 점수를 쌓습니다. <b class="mt">22</b>턴 뒤 점수가 더 높으면 그 밤을 넘깁니다. <em>허상은 쓰러뜨려도 2턴 뒤 돌아오니, 전멸시켜서는 이기지 못합니다.</em></span></li>
+    <!-- 「셋이 모두 쓰러지면 끝」이 규칙 모달에만 있었다. 그런데 밤1에서 지는 23판 중
+         22판이 「점수는 앞서는데 전멸」이다 — 플레이어가 첫 판에 반드시 마주치는 조건을
+         찾아 들어가야 보이는 곳에만 적어 두고 있었다. 목표 옆에 붙인다.
+         두 문장이 나란한 것은 의도다: 내 전멸은 즉사, 적 전멸은 무의미. -->
+    <li><b>이기는 방법</b><span>판 위의 <em>거점 세 곳</em>을 밟아 점수를 쌓습니다. <b class="mt">22</b>턴 뒤 점수가 더 높으면 그 밤을 넘깁니다. 단 <em>셋이 모두 쓰러지면 점수와 상관없이 그 자리에서 끝납니다.</em> 허상은 쓰러뜨려도 2턴 뒤 돌아오니, 전멸시켜서는 이기지 못합니다.</span></li>
     <li><b>세 밤</b><span>밤마다 판이 달라집니다. 같은 네 장이라도 순서가 다르면 전혀 다른 밤이 됩니다.</span></li>
   </ol>
 
@@ -689,15 +684,11 @@ canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:100%;max-widt
       기록에 <b>맞는 줄 없음</b>으로 남습니다.</p>
   </figure>
 
+  <!-- 구성 선택 버튼(A·B·C·Z)을 지웠다. STAGE_SETS 가 넷 다 같은 배열을 가리키게 된 뒤로
+       무엇을 눌러도 같은 밤이 나왔다 — 고를 게 없는데 고르라고 묻고 있었다.
+       하네스는 여전히 #set=Z 로 기준선을 부를 수 있다(SETKEY 는 남아 있다). -->
   <div class="cta-row">
     <button class="cta" id="start">교대 시작</button>
-    <div id="setpick" role="group" aria-label="레벨 구성 선택">
-      <span>구성</span>
-      <button data-set="A">A 배치만</button>
-      <button data-set="B">B 장애물</button>
-      <button data-set="C">C 새 카드</button>
-      <button data-set="Z">Z 기존</button>
-    </div>
   </div>
 </section>
 
@@ -2493,10 +2484,16 @@ function finish(){
   stash(); carried=orders.map(o=>o.slice());
   const last = stageIdx>=STAGES.length-1;
   $('bt').textContent = won?(last?'밤이 끝났다':'교대 완료'):'무너졌다';
+  /* 진 이유를 구분해서 말한다. 전에는 전멸이든 시간 초과든 같은 문장이었는데,
+     점수 막대가 33 대 0 으로 꽉 찬 화면에서 그 문장을 읽으면 자기가 무엇을 틀렸는지가
+     아니라 게임이 이상하다고 결론난다. 밤1에서 지는 23판 중 22판이 이 형태다. */
+  const wiped = !alive(st).some(u=>u.side==='ally');
   $('bp').textContent = won
     ? (last?'세 밤을 모두 넘겼습니다. 당신이 정한 것은 움직임이 아니라 읽는 순서였습니다.'
            :'이 순서가 다음 밤에도 통할지는 모릅니다. 판이 바뀌면 조건이 맞는 줄도 바뀝니다.')
-    : '아래 기록에 누가 몇 번 줄을 읽었는지 남아 있습니다. 순서를 바꿔 다시 내려보내세요.';
+    : (wiped && st.score.ally>st.score.foe
+        ? '점수는 앞서 있었습니다. 그런데 아무도 남지 않았습니다. 순서를 바꿔 다시 내려보내세요.'
+        : '아래 기록에 누가 몇 번 줄을 읽었는지 남아 있습니다. 순서를 바꿔 다시 내려보내세요.');
   $('bb').textContent = won?(last?'처음부터':'대원 교대'):'다시 쓰기';
   /* 이긴 밤은 반드시 편성 화면을 거친다. 오늘 나간 셋이 여기서 소모되고,
      다음 밤은 남은 사람 중에서 골라야 하기 때문이다.
@@ -2535,11 +2532,7 @@ function toast(m,ms){ const t=$('toast'); t.textContent=m; t.classList.add('on')
    const 는 선언 전 구간이 TDZ 라 typeof 로 감싸도 ReferenceError 가 난다 — var 와 다르다.
    여기서 미리 꽂으려다 스크립트 전체가 그 줄에서 죽었다. */
 
-/* 구성 선택 — 리로드로 갈아끼운다. 진행 중 상태를 옮기려 들면 버그만 는다. */
-document.querySelectorAll('#setpick [data-set]').forEach(b=>{
-  b.setAttribute('aria-current', b.dataset.set===SETKEY ? 'true' : 'false');
-  b.onclick=()=>{ location.hash='set='+b.dataset.set; location.reload(); };
-});
+/* 구성 선택 버튼은 지웠다. SETKEY 는 남는다 — 하네스가 #set=Z 로 기준선을 부른다. */
 
 /* ── 편성: 9명 중 3명 ──
    고른 결과는 ACTIVE 로만 흘려보낸다. 엔진은 ACTIVE 밖을 모른다. */
