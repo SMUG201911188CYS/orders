@@ -39,3 +39,9 @@ font-preview.html
 fonts/
 .omc/
 .omx/
+
+# 스프라이트 생성 기준 이미지 — tools/sprref.js 가 index.html 에서 다시 뽑는다.
+# 채택된 생성 결과(art/spr-out/)만 남긴다. 그쪽은 다시 만들 수 없다.
+art/spr-src/
+art/run_spr6.sh
+index.html.bak
