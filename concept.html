@@ -1,0 +1,689 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ORDERS — 게임 소개서</title>
+<meta name="description" content="직접 조종할 수 없는 부대에게 우선순위가 매겨진 지시서 한 장만 내려보내는 전술 퍼즐. NHN NAN 2026 사전 과제.">
+<meta name="theme-color" content="#12171A">
+<style>
+  :root {
+    --paper:   #E8EAE7;
+    --surface: #F3F4F1;
+    --sunk:    #DEE1DC;
+    --ink:     #171D21;
+    --ink-2:   #556067;
+    --ink-3:   #7C878C;
+    --rule:    #C7CCC6;
+    --ally:    #2A6B72;
+    --foe:     #9C4A38;
+    --node:    #9C7418;
+
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo",
+            "Malgun Gothic", "맑은 고딕", Roboto, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "Cascadia Mono", Consolas,
+            "D2Coding", "D2Coding ligature", monospace;
+
+    --measure: 40rem;
+    --step: clamp(2.2rem, 6vw, 3.1rem);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper:   #12171A;
+      --surface: #1A2126;
+      --sunk:    #0C1013;
+      --ink:     #E1E5E0;
+      --ink-2:   #9AA5A9;
+      --ink-3:   #6E797E;
+      --rule:    #2B353B;
+      --ally:    #5CADB2;
+      --foe:     #D07E68;
+      --node:    #C9A247;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:#12171A; --surface:#1A2126; --sunk:#0C1013;
+    --ink:#E1E5E0; --ink-2:#9AA5A9; --ink-3:#6E797E; --rule:#2B353B;
+    --ally:#5CADB2; --foe:#D07E68; --node:#C9A247;
+  }
+  :root[data-theme="light"] {
+    --paper:#E8EAE7; --surface:#F3F4F1; --sunk:#DEE1DC;
+    --ink:#171D21; --ink-2:#556067; --ink-3:#7C878C; --rule:#C7CCC6;
+    --ally:#2A6B72; --foe:#9C4A38; --node:#9C7418;
+  }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.75;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* 브라우저 기본값 제거: figure는 margin-inline 40px, 목록은 padding-inline-start 40px */
+  figure, ul, ol { margin: 0; padding: 0; }
+
+  .wrap {
+    max-width: var(--measure);
+    margin: 0 auto;
+    padding: clamp(2.5rem, 7vw, 5rem) clamp(1.15rem, 5vw, 2rem) 6rem;
+    display: flex;
+    flex-direction: column;
+    gap: var(--step);
+  }
+
+  /* ---- type ---- */
+  h1 {
+    font-size: clamp(1.9rem, 5.5vw, 2.6rem);
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    line-height: 1.2;
+    text-wrap: balance;
+  }
+  h2 {
+    font-size: 1.22rem;
+    font-weight: 700;
+    letter-spacing: -0.012em;
+    line-height: 1.4;
+    text-wrap: balance;
+  }
+  h3 {
+    font-size: 0.98rem;
+    font-weight: 700;
+    letter-spacing: -0.005em;
+  }
+  p { text-wrap: pretty; }
+  strong { font-weight: 700; }
+  em { font-style: normal; color: var(--foe); font-weight: 700; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  .lede {
+    font-size: 1.06rem;
+    color: var(--ink-2);
+  }
+  .note {
+    font-size: 0.86rem;
+    color: var(--ink-3);
+    line-height: 1.65;
+  }
+
+  section { display: flex; flex-direction: column; gap: 1.1rem; }
+  section > h2 { margin-bottom: -0.35rem; }
+
+  hr {
+    border: 0;
+    border-top: 1px solid var(--rule);
+    margin: 0;
+  }
+
+  /* ---- header ---- */
+  header { display: flex; flex-direction: column; gap: 0.9rem; }
+  .titleblock { display: flex; flex-direction: column; gap: 0.35rem; }
+  .working-name {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    color: var(--ink-3);
+  }
+  .thesis {
+    border-left: 3px solid var(--ally);
+    padding: 0.15rem 0 0.15rem 1rem;
+    font-size: 1.14rem;
+    line-height: 1.6;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
+  /* ---- compare ---- */
+  .compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+  }
+  .compare > div {
+    background: var(--surface);
+    padding: 1rem 1.05rem 1.15rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  .compare .k {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  .compare .v { font-size: 0.93rem; line-height: 1.6; color: var(--ink-2); }
+  .compare .v b { color: var(--ink); }
+  @media (max-width: 34rem) { .compare { grid-template-columns: 1fr; } }
+
+  /* ---- board ---- */
+  figure {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    align-items: flex-start;
+  }
+  .board {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    grid-template-rows: repeat(7, 1fr);
+    gap: 2px;
+    background: var(--rule);
+    border: 2px solid var(--rule);
+    width: clamp(8.5rem, 19vw, 12rem);
+    aspect-ratio: 1;
+  }
+  .cell {
+    background: var(--surface);
+    display: grid;
+    place-items: center;
+    font-size: 0.95rem;
+    line-height: 1;
+    position: relative;
+  }
+  .cell.node { background: var(--sunk); }
+  .cell.node::before {
+    content: "";
+    position: absolute;
+    inset: 4px;
+    border: 1.5px solid var(--node);
+  }
+  .cell .pip {
+    width: 58%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    position: relative;
+    z-index: 1;
+  }
+  .cell.ally .pip { background: var(--ally); }
+  .cell.foe  .pip { background: var(--foe); }
+  .cell.held .pip { border-radius: 2px; box-shadow: 0 0 0 2.5px var(--node); }
+
+  figcaption {
+    font-size: 0.84rem;
+    color: var(--ink-2);
+    line-height: 1.6;
+    max-width: 22rem;
+  }
+  figcaption b { color: var(--ink); font-weight: 700; }
+  .turnmark {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    color: var(--ink-3);
+    text-transform: uppercase;
+  }
+
+  .strip {
+    display: flex;
+    gap: 1.4rem;
+    overflow-x: auto;
+    padding-bottom: 0.6rem;
+  }
+  .strip figure { flex: 0 0 auto; width: clamp(8.5rem, 19vw, 12rem); }
+  .strip figcaption { max-width: 100%; }
+
+  /* ---- legend ---- */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 1.15rem;
+    font-size: 0.82rem;
+    color: var(--ink-2);
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 0.4rem; }
+  .sw { width: 0.7rem; height: 0.7rem; border-radius: 50%; flex: none; }
+  .sw.a { background: var(--ally); }
+  .sw.f { background: var(--foe); }
+  .sw.n { border-radius: 0; border: 1.5px solid var(--node); background: transparent; }
+  .sw.h { border-radius: 2px; background: var(--ally); box-shadow: 0 0 0 2px var(--node); }
+
+  /* ---- rule cards ---- */
+  .policy {
+    border: 1px solid var(--rule);
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+  }
+  .policy-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    padding: 0.7rem 0.95rem;
+    border-bottom: 1px solid var(--rule);
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  ol.cards { list-style: none; display: flex; flex-direction: column; }
+  ol.cards li {
+    display: grid;
+    grid-template-columns: 1.9rem 1fr;
+    align-items: baseline;
+    gap: 0.7rem;
+    padding: 0.62rem 0.95rem;
+    border-bottom: 1px solid var(--rule);
+    font-size: 0.9rem;
+  }
+  ol.cards li:last-child { border-bottom: 0; }
+  ol.cards .n {
+    font-family: var(--mono);
+    font-size: 0.74rem;
+    color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+  }
+  .cond { font-family: var(--mono); font-size: 0.82rem; color: var(--ally); }
+  .then { color: var(--ink-3); font-family: var(--mono); font-size: 0.78rem; padding: 0 0.28rem; }
+  .act  { font-weight: 700; }
+  li.fallback .cond { color: var(--ink-3); }
+
+  .two {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.1rem;
+  }
+  @media (max-width: 40rem) { .two { grid-template-columns: 1fr; } }
+
+  /* ---- table ---- */
+  .tablewrap { overflow-x: auto; border: 1px solid var(--rule); }
+  table { border-collapse: collapse; width: 100%; font-size: 0.88rem; }
+  th, td {
+    text-align: left;
+    padding: 0.6rem 0.9rem;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  thead th {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-weight: 400;
+    background: var(--surface);
+  }
+  tbody tr:last-child td { border-bottom: 0; }
+  td.num { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td b { font-weight: 700; }
+
+  /* ---- lists ---- */
+  /* 마커는 absolute로 띄운다. li를 grid로 잡으면 내부 텍스트 노드가
+     별도 그리드 아이템이 되어 폭 없는 열로 밀려나며 한 글자씩 줄바꿈된다. */
+  ul.plain { list-style: none; display: flex; flex-direction: column; gap: 0.6rem; }
+  ul.plain li {
+    position: relative;
+    padding-left: 1.4rem;
+    font-size: 0.94rem;
+    line-height: 1.65;
+  }
+  ul.plain li::before {
+    content: "";
+    position: absolute;
+    left: 0.2rem;
+    top: 0.62rem;
+    width: 5px; height: 5px;
+    background: var(--ink-3);
+    border-radius: 50%;
+  }
+
+  .callout {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--node);
+    padding: 0.95rem 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+  }
+  .callout .eyebrow { color: var(--node); }
+  .callout p { font-size: 0.92rem; line-height: 1.7; }
+
+  /* ---- loop diagram ---- */
+  .loopblock {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    align-items: center;
+  }
+  .loop {
+    display: block;
+    width: 100%;
+    max-width: 24rem;
+    height: auto;
+    overflow: visible;
+  }
+  .loop .arc {
+    fill: none;
+    stroke: var(--ink-3);
+    stroke-width: 2;
+    color: var(--ink-3);
+  }
+  .loop .disc {
+    fill: var(--surface);
+    stroke: var(--rule);
+    stroke-width: 2;
+  }
+  .loop .disc.player { stroke: var(--ally); }
+  .loop .disc.shock  { stroke: var(--foe); }
+  .loop text { fill: var(--ink); text-anchor: middle; }
+  .loop .num {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    fill: var(--ink-3);
+  }
+  .loop .verb { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; }
+  .loop .verb.shocktx { fill: var(--foe); }
+  .loop .who { font-family: var(--mono); font-size: 9.5px; fill: var(--ink-3); }
+  .loop .edge { font-family: var(--mono); font-size: 11px; fill: var(--ink-3); }
+  .loop .clock { font-family: var(--mono); font-size: 10px; fill: var(--ink-3); letter-spacing: 0.06em; }
+
+  ol.steps { list-style: none; display: flex; flex-direction: column; gap: 0.55rem; counter-reset: s; width: 100%; }
+  ol.steps li {
+    position: relative;
+    padding-left: 2.4rem;
+    font-size: 0.92rem;
+    line-height: 1.65;
+  }
+  ol.steps li::before {
+    counter-increment: s;
+    content: counter(s, decimal-leading-zero);
+    position: absolute;
+    left: 0;
+    top: 0.1rem;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+  }
+  ol.steps li b { font-weight: 700; }
+  ol.steps li.hot::before { color: var(--foe); }
+
+  a { color: var(--ally); }
+  :focus-visible { outline: 2px solid var(--ally); outline-offset: 3px; }
+
+  /* 벽 — 원본 4×4 에는 없던 요소다 */
+  .cell.wall { background: var(--ink-3); }
+  .cell.wall::after { content:""; position:absolute; inset:0;
+    background: repeating-linear-gradient(135deg, transparent 0 3px, rgba(0,0,0,.18) 3px 6px); }
+  .strip { gap: 1.1rem; }
+  .strip figcaption { font-size: 0.8rem; }
+  /* 결과 배지 — 이긴 순서와 진 순서를 나란히 놓을 때만 쓴다 */
+  .verdict { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.08em;
+    text-transform: uppercase; padding: 0.55rem 0.95rem; border-top: 1px solid var(--rule);
+    display: flex; justify-content: space-between; gap: 0.8rem; }
+  .verdict.win  { color: var(--ally); }
+  .verdict.lose { color: var(--foe); }
+  .verdict b { font-weight: 700; }
+  .fires { display: flex; gap: 3px; padding: 0 0.95rem 0.8rem; }
+  .fires i { flex: 1; height: 4px; background: var(--sunk); position: relative; }
+  .fires i::after { content:""; position:absolute; inset:0 auto 0 0; background: var(--ink-3); }
+  .cta { display: flex; flex-wrap: wrap; gap: 0.7rem 1.4rem; align-items: baseline; }
+  .cta a { font-weight: 700; font-size: 1.02rem; }
+  /* 표의 첫 열은 지목하는 이름이다. 「최소 확정 깊이」가 「깊이」만 다음 줄로 넘어가면
+     읽는 사람이 항목을 두 번 이어 붙여야 한다. 이름은 한 줄로 둔다. */
+  tbody td:first-child { white-space: nowrap; }
+</style>
+
+<div class="wrap">
+
+<header>
+  <div class="titleblock">
+    <div class="eyebrow">NHN NAN 2026 게임 × AI 해커톤 · 사전 과제 · 1인 제작</div>
+    <h1>ORDERS — 오늘 밤의 지시서</h1>
+  </div>
+  <p class="thesis">직접 조종할 수 없는 부대에게, 우선순위가 매겨진 지시서 한 장만 내려보내는 전술 퍼즐.</p>
+  <p class="lede">플레이어는 유닛을 움직이지 않는다. 개시 전에 <b>누구를 보낼지</b>와
+  <b>각자 무엇을 먼저 볼지</b>만 정하고, 그다음부터 밤이 끝날 때까지 아무것도 할 수 없다.</p>
+  <div class="cta">
+    <a href="https://smug201911188cys.github.io/orders/">▶ 지금 플레이</a>
+    <span class="note">설치·로그인·다운로드 없음 · 브라우저에서 바로</span>
+  </div>
+</header>
+
+<hr>
+
+<section>
+  <div class="eyebrow">01 · 30초 요약</div>
+  <h2>플레이어가 하는 일은 두 가지뿐이다</h2>
+  <ol class="steps">
+    <li><b>편성</b> — 아홉 대원 중 오늘 밤 나갈 셋을 고른다</li>
+    <li><b>지시서</b> — 셋에게 각각 카드 <b>4장의 순서</b>를 정한다</li>
+    <li class="hot"><b>개시</b> — 그리고 끝이다. 22턴이 지나갈 때까지 개입할 수 없다</li>
+  </ol>
+  <p>매 턴 각 대원은 자기 지시서를 <b>위에서부터 읽고, 조건이 맞는 첫 줄 하나만</b> 실행한다.
+  아래 줄은 읽지 않는다. 네 줄 다 안 맞으면 그 자리에 머문다.</p>
+  <div class="compare">
+    <div>
+      <div class="k">보통의 전술 게임</div>
+      <div class="v">상황을 보고 <b>그때그때</b> 최선을 고른다. 실수하면 다음 턴에 만회한다.</div>
+    </div>
+    <div>
+      <div class="k">ORDERS</div>
+      <div class="v">상황을 <b>미리 예측해</b> 규칙으로 적는다. 틀리면 22턴 동안 그대로 지켜본다.</div>
+    </div>
+  </div>
+  <div class="callout">
+    <div class="eyebrow">이 게임의 난이도가 있는 곳</div>
+    <p>「무엇을 시킬까」가 아니라 <b>「무엇을 먼저 볼까」</b>다.
+    같은 네 장이라도 <em>순서가 다르면 전혀 다른 밤</em>이 된다.</p>
+  </div>
+</section>
+
+<hr>
+
+<section>
+  <div class="eyebrow">02 · 한 수</div>
+  <h2>같은 네 장. 순서만 다르다</h2>
+  <p>첫 밤의 손패는 <b>공격 · 점령 · 후퇴 · 주둔</b> 넉 장이다.
+  거점 점수로 승패가 갈리는 게임이니 <b>점령을 맨 위에</b> 두는 것이 자연스러워 보인다.
+  실제로 그렇게 하면 점수는 압도한다 — 그리고 진다.</p>
+
+  <div class="two">
+    <div class="policy">
+      <div class="policy-head"><span>자연스러운 순서</span><span>점령 우선</span></div>
+      <ol class="cards"><li><span class="n">01</span><span><b>점령</b> <span class="cond">미 점령 거점 중 가장 가까운 쪽으로 이동</span></span></li><li><span class="n">02</span><span><b>공격</b> <span class="cond">사거리 내 가장 체력 낮은 적 공격</span></span></li><li><span class="n">03</span><span><b>주둔</b> <span class="cond">점령 거점 존재 및 근처 적 없을 시 거점으로 이동</span></span></li><li><span class="n">04</span><span><b>후퇴</b> <span class="cond">자신체력 절반 이하 및 적 근처 존재 시 뒤로 이동</span></span></li></ol>
+      <div class="verdict lose"><span>패배 · 19턴에 전멸</span><span>점수 <b>33</b> 대 0</span></div>
+      <div class="fires"><i><span style="position:absolute;inset:0 0% 0 0;background:var(--ink-3)"></span></i><i><span style="position:absolute;inset:0 100% 0 0;background:var(--ink-3)"></span></i><i><span style="position:absolute;inset:0 100% 0 0;background:var(--ink-3)"></span></i><i><span style="position:absolute;inset:0 100% 0 0;background:var(--ink-3)"></span></i></div>
+      <p class="note" style="padding:0 .95rem .9rem">네 칸이 발동한 횟수 <b>38 / 0 / 0 / 0</b> —
+      1번 줄이 <b>항상</b> 맞아서 <em>아래 세 줄을 한 번도 읽지 않았다.</em></p>
+    </div>
+    <div class="policy">
+      <div class="policy-head"><span>유일하게 통하는 순서</span><span>후퇴 우선</span></div>
+      <ol class="cards"><li><span class="n">01</span><span><b>후퇴</b> <span class="cond">자신체력 절반 이하 및 적 근처 존재 시 뒤로 이동</span></span></li><li><span class="n">02</span><span><b>공격</b> <span class="cond">사거리 내 가장 체력 낮은 적 공격</span></span></li><li><span class="n">03</span><span><b>주둔</b> <span class="cond">점령 거점 존재 및 근처 적 없을 시 거점으로 이동</span></span></li><li><span class="n">04</span><span><b>점령</b> <span class="cond">미 점령 거점 중 가장 가까운 쪽으로 이동</span></span></li></ol>
+      <div class="verdict win"><span>승리 · 1명 생존</span><span>점수 <b>25</b> 대 10</span></div>
+      <div class="fires"><i><span style="position:absolute;inset:0 0% 0 0;background:var(--ink-3)"></span></i><i><span style="position:absolute;inset:0 58.82352941176471% 0 0;background:var(--ink-3)"></span></i><i><span style="position:absolute;inset:0 5.882352941176478% 0 0;background:var(--ink-3)"></span></i><i><span style="position:absolute;inset:0 47.05882352941176% 0 0;background:var(--ink-3)"></span></i></div>
+      <p class="note" style="padding:0 .95rem .9rem">발동 <b>17 / 7 / 16 / 9</b> —
+      네 줄이 <b>고르게</b> 쓰인다. 지시서가 실제로 네 줄짜리다.</p>
+    </div>
+  </div>
+
+  <div class="callout">
+    <div class="eyebrow">여기서 배우는 것</div>
+    <p><b>위에 둔 한 줄이 항상 맞으면, 아래 세 줄은 없는 것과 같다.</b>
+    좋은 지시서는 강한 카드를 위에 두는 것이 아니라,
+    <em>드물게 맞는 줄을 위에, 항상 맞는 줄을 아래에</em> 두는 것이다.</p>
+  </div>
+
+  <p class="note">셋 모두에게 <b>같은</b> 지시서를 준다면 첫 밤은 24가지 중 <b>단 한 가지</b>만 통한다.
+  그래서 셋에게 <b>다르게</b> 줘야 한다 — 대원별 지시서가 이 게임의 답이 넓어지는 지점이다.</p>
+</section>
+
+<hr>
+
+<section>
+  <div class="eyebrow">03 · 판</div>
+  <h2>7×7 · 야근조 셋 대 허상 셋 · 거점 세 곳 · 22턴</h2>
+  <div class="strip">
+    <figure>
+      <div class="turnmark">밤 1 — 첫 교대</div>
+      <div class="board"><div class="cell"></div><div class="cell foe"><span class="pip"></span></div><div class="cell"></div><div class="cell foe"><span class="pip"></span></div><div class="cell"></div><div class="cell foe"><span class="pip"></span></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell node"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell node"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell node"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell ally"><span class="pip"></span></div><div class="cell"></div><div class="cell ally"><span class="pip"></span></div><div class="cell"></div><div class="cell ally"><span class="pip"></span></div><div class="cell"></div></div>
+      <figcaption><b>거점 하나가 저쪽 깊이 있다.</b> 셋 중 누가 갈지부터 정해야 한다.</figcaption>
+    </figure>
+    <figure>
+      <div class="turnmark">밤 2 — 버티는 복도</div>
+      <div class="board"><div class="cell"></div><div class="cell foe"><span class="pip"></span></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell foe"><span class="pip"></span></div><div class="cell wall"></div><div class="cell"></div><div class="cell foe"><span class="pip"></span></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell node"></div><div class="cell node"></div><div class="cell wall"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell wall"></div><div class="cell"></div><div class="cell wall"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell ally"><span class="pip"></span></div><div class="cell node"></div><div class="cell ally"><span class="pip"></span></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell ally"><span class="pip"></span></div><div class="cell"></div></div>
+      <figcaption><b>벽이 길을 끊는다.</b> 거체는 밀어도 비키지 않는다.</figcaption>
+    </figure>
+    <figure>
+      <div class="turnmark">밤 3 — 쫓기는 밤</div>
+      <div class="board"><div class="cell"></div><div class="cell foe"><span class="pip"></span></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell foe"><span class="pip"></span></div><div class="cell foe"><span class="pip"></span></div><div class="cell"></div><div class="cell"></div><div class="cell node"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell wall"></div><div class="cell"></div><div class="cell wall"></div><div class="cell node"></div><div class="cell"></div><div class="cell wall"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell wall"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell node"></div><div class="cell"></div><div class="cell ally"><span class="pip"></span></div><div class="cell ally"><span class="pip"></span></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell ally"><span class="pip"></span></div><div class="cell"></div><div class="cell"></div></div>
+      <figcaption><b>거점이 세 방향으로 흩어져 있다.</b> 11턴에 허상이 지시서를 갈아 든다.</figcaption>
+    </figure>
+  </div>
+  <div class="legend">
+    <span><i class="sw a"></i>야근조</span>
+    <span><i class="sw f"></i>허상</span>
+    <span><i class="sw n"></i>거점</span>
+    <span><i class="sw" style="border-radius:0;background:var(--ink-3)"></i>벽</span>
+  </div>
+  <ul class="plain">
+    <li><b>득점</b> — 매 턴 끝에 소유 거점 1곳당 1점. 소유권은 마지막으로 밟은 쪽이 갖고 떠나도 유지된다</li>
+    <li><b>점수 끊김</b> — 거점 옆에 허상이 붙어 있으면 그 턴 그 거점의 점수가 들어오지 않는다</li>
+    <li><b>승패</b> — 22턴 후 점수 비교. 야근조 셋이 모두 쓰러지면 즉시 패배</li>
+    <li><b>허상은 쓰러뜨려도 2턴 뒤 돌아온다.</b> 전멸은 승리 조건이 <em>아니다</em></li>
+  </ul>
+</section>
+
+<hr>
+
+<section>
+  <div class="eyebrow">04 · 루프</div>
+  <h2>관전이 곧 정찰이다</h2>
+  <p><b>허상의 지시서는 가려져 있다.</b> 그 줄이 실제로 발동한 순간에만 한 칸씩 공개된다.
+  그래서 진 밤도 버려지지 않는다 — 다시 시작해도 알아낸 것은 남는다.</p>
+  <ol class="steps">
+    <li><b>고른다</b> — 아홉 중 셋. 역할이 다르면 쓸 수 있는 카드도 달라진다</li>
+    <li><b>적는다</b> — 셋에게 각각 네 줄</li>
+    <li class="hot"><b>지켜본다</b> — 22턴. 손댈 수 없다</li>
+    <li><b>읽는다</b> — 누가 몇 번 줄을 읽고 무엇을 했는지 기록에 남는다</li>
+    <li><b>고친다</b> — 알아낸 허상의 줄을 넣어 다시 적는다</li>
+  </ol>
+  <p class="note">한 판은 관전을 건너뛰면 몇 초, 끝까지 보면 1분 남짓이다.
+  플레이어가 오래 머무는 곳은 판이 아니라 <b>지시서를 고쳐 쓰는 자리</b>다.</p>
+</section>
+
+<hr>
+
+<section>
+  <div class="eyebrow">05 · 편성</div>
+  <h2>아홉 대원 — 누구를 데려가느냐가 답을 바꾼다</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>대원</th><th>역할</th><th>체력</th><th>판 위에서 달라지는 것</th></tr></thead>
+    <tbody>
+      <tr><td><b>린</b></td><td>전위</td><td class="num">5</td><td>한 턴에 행동 2회 · 공격 2회</td></tr>
+      <tr><td><b>하나</b></td><td>전위</td><td class="num">7</td><td>체력 7 — 아홉 중 최대</td></tr>
+      <tr><td><b>소라</b></td><td>전위</td><td class="num">5</td><td>공격 시 넉백</td></tr>
+      <tr><td><b>유이</b></td><td>사수</td><td class="num">3</td><td>사거리 3</td></tr>
+      <tr><td><b>미오</b></td><td>사수</td><td class="num">2</td><td>사거리 5 · 2턴에 1회 · 피해 2</td></tr>
+      <tr><td><b>나기</b></td><td>사수</td><td class="num">3</td><td>사거리 2 · 한 턴에 2회</td></tr>
+      <tr><td><b>아오이</b></td><td>지원</td><td class="num">4</td><td>치료량 3</td></tr>
+      <tr><td><b>호타루</b></td><td>지원</td><td class="num">4</td><td>광역 치료 2 · 거점 점수 2배</td></tr>
+      <tr><td><b>시즈</b></td><td>지원</td><td class="num">4</td><td>치료 2 · 인접 적 속박</td></tr>
+    </tbody>
+  </table></div>
+  <p>역할이 다르면 <b>손패에 얹히는 전용 카드</b>도 다르다 —
+  전위는 <b>저지</b>, 사수는 <b>거리두기</b>, 지원은 <b>치료</b>와 <b>구조</b> 두 장을 받는다.
+  그래서 「왜 이 셋인가」가 실제로 판을 바꾼다.</p>
+
+  <h3>84편성을 전부 재 봤다 (편성당 밤별 800판)</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>편성</th><th>밤 1</th><th>밤 2</th><th>밤 3</th></tr></thead>
+    <tbody>
+      <tr><td>소라 · 유이 · 나기</td><td class="num"><b>1.6%</b></td><td class="num">13.3%</td><td class="num">10.9%</td></tr>
+      <tr><td>유이 · 아오이 · 시즈</td><td class="num">20.6%</td><td class="num"><b>3.8%</b></td><td class="num"><b>2.4%</b></td></tr>
+      <tr><td>린 · 하나 · 유이 (기본)</td><td class="num">26.8%</td><td class="num">10.9%</td><td class="num">7.8%</td></tr>
+      <tr><td>84편성 <b>중앙값</b></td><td class="num">16.5%</td><td class="num">10.0%</td><td class="num">8.0%</td></tr>
+    </tbody>
+  </table></div>
+  <ul class="plain">
+    <li><b>클리어 경로가 없는 편성 0 / 84</b> — 고르면 안 되는 편성은 없다</li>
+    <li>중앙값이 밤을 따라 내려간다 — <b>난이도 곡선이 성립한다</b></li>
+    <li>같은 밤에서 편성별로 최대 <em>19.5배</em>까지 갈린다 — 편성 선택이 실제로 답을 가른다</li>
+  </ul>
+</section>
+
+<hr>
+
+<section>
+  <div class="eyebrow">06 · 설계</div>
+  <h2>「재미」를 수치로 정의했다</h2>
+  <p>게임에 난수가 없다. 그래서 「승률」은 확률이 아니라 <b>조합 비율</b>이고,
+  카드 순서를 전부 돌리면 그 밤의 전부를 안다. 밸런싱이 눈으로 보는 일이 아니라 <b>실행하는 일</b>이 된다.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>지표</th><th>무엇을 재는가</th><th>이게 없으면</th></tr></thead>
+    <tbody>
+      <tr><td><b>최소 확정 깊이</b></td><td>앞 k줄만 정하면 나머지가 뭐든 이기는 최소 k</td><td>깊이 1이면 뒤 3줄은 장식이다</td></tr>
+      <tr><td><b>단일 조건 커버율</b></td><td>한 (카드, 슬롯)이 전체 승리에서 차지하는 비중</td><td>한 수가 승리를 독식해도 총승률로는 안 보인다</td></tr>
+      <tr><td><b>1번 줄 이득 배수</b></td><td>최고 1번 줄 승률 ÷ 전체 승률</td><td>1.0이면 첫 줄을 골라도 이득이 없다</td></tr>
+      <tr><td><b>4번 줄 사장률</b></td><td>이긴 판 중 4번 줄이 한 번도 실행 안 된 비율</td><td>네 번째 카드를 놓는 행위가 무의미해진다</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout">
+    <div class="eyebrow">총합 승률은 설계를 보여주지 않는다</div>
+    <p>초기 3밤은 겉보기 승률 20%로 멀쩡해 보였다. 그런데 <b>추격을 1번 줄에 두면 60전 60승</b>이었고,
+    그 60판에서 <em>2·3·4번 줄은 한 번도 실행되지 않았다.</em>
+    플레이어는 네 장을 놓지만 게임은 한 장만 읽고 있었다.
+    20%가 「고르게 20%」인지 「82%가 한 칸에서」인지 총합은 구분하지 못한다.</p>
+  </div>
+  <p class="note">제작 과정에서 AI를 어디에 썼고 <b>어디에 쓰지 않았는지</b>,
+  그리고 측정이 설계 판단을 뒤집은 사례는
+  <a href="https://github.com/SMUG201911188CYS/orders/blob/main/AI-USAGE.md">AI 활용 기술 문서</a>에 따로 적었다.</p>
+</section>
+
+<hr>
+
+<section>
+  <div class="eyebrow">07 · 본선과의 연결</div>
+  <h2>이 게임의 주제가 곧 에이전트 디렉팅이다</h2>
+  <p>본선은 <b>「에이전트 설계서」</b>와 <b>「디렉팅 명세서」</b>를 요구한다.
+  ORDERS는 그 둘을 문서가 아니라 <b>게임 규칙 자체로</b> 구현하고 있다.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>본선 개념</th><th>ORDERS에서</th></tr></thead>
+    <tbody>
+      <tr><td>에이전트</td><td>아홉 대원. 각자 다른 능력치와 역할 전용 행동</td></tr>
+      <tr><td>디렉팅 명세</td><td><b>지시서</b> — 우선순위가 매겨진 조건→행동 4줄</td></tr>
+      <tr><td>실행 중 개입 불가</td><td>개시 후 밤이 끝날 때까지 아무것도 할 수 없다</td></tr>
+      <tr><td>관측으로만 얻는 정보</td><td>허상의 지시서는 <b>발동한 줄만</b> 공개된다</td></tr>
+      <tr><td>명세 품질의 평가</td><td>승률이 아니라 확정 깊이 · 단일 커버율 · 사장률</td></tr>
+    </tbody>
+  </table></div>
+  <p>플레이어가 이 게임에서 배우는 것은 <b>자율 행위자에게 우선순위를 어떻게 주는가</b>다.</p>
+</section>
+
+<hr>
+
+<section>
+  <div class="eyebrow">08 · 지금</div>
+  <h2>배포 상태</h2>
+  <ul class="plain">
+    <li><b>완성되어 배포까지 끝났다.</b> <code>index.html</code> 한 파일 · 빌드 없음 · 런타임 네트워크 요청 0건</li>
+    <li>세 밤 · 아홉 대원 · 카드 11종 · 허상 4종</li>
+    <li>게임 안에 자체 검증이 들어 있다 — <code>#qa=1</code>(기능) · <code>#test=1</code>(카드 순열 전수) ·
+      <code>#ui=1</code>(DOM 배선) · <code>#fuzz=200</code>(무작위 조작 + 불변식)</li>
+    <li>판 위 캐릭터 아홉 중 다섯이 개별 스프라이트를 갖는다. 나머지 넷은 같은 역할군의 몸을 빌린다</li>
+  </ul>
+  <div class="cta">
+    <a href="https://smug201911188cys.github.io/orders/">▶ 지금 플레이</a>
+    <a href="https://github.com/SMUG201911188CYS/orders/blob/main/README.md">저장소 README</a>
+    <a href="https://github.com/SMUG201911188CYS/orders/blob/main/AI-USAGE.md">AI 활용 기술 문서</a>
+  </div>
+</section>
+
+</div>
+</html>
