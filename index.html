@@ -882,56 +882,110 @@ const TH={
    ══════════════════════════════════════════════════════════════ */
 const SPR = {
 rin:[
-'................',
-'....LLLLLLLL....',
-'..LLHHHHHHHHLL..',
-'..LHHHHHHHHHHL..',
-'..LHHGGHHGGHHL..',
-'..LHSSSSSSSSHL..',
-'..LHSWESSWESHL..',
-'..LHSEESSEESHL..',
-'..LHSSSssSSSHL..',
-'..LhSSSSSSSShL..',
-'...LLSSSSSSLL...',
-'.....LCCCCL.....',
-'..LLCCCAACCCLL..',
-'..LSCCCAACCCSL..',
-'..LSCCcccccCSL..',
-'...LLCCLLCCLL...'],
+'....................',
+'......LLLLLLLL......',
+'....LLHHHHHHHHLL....',
+'....LHHHHHHHHHHL....',
+'....LHHGGHHGGHHL....',
+'....LHSSSSSSSSHL....',
+'....LHSWESSWESHL....',
+'....LHSEESSEESHL....',
+'....LHSSSssSSSHL....',
+'....LhSSSSSSSShL....',
+'.....LLSSSSSSLL.....',
+'.....LCCCAACCCL.....',
+'.....CCLCAACLCCL....',
+'.....CCLCAACLCCL....',
+'.....SSLccccLSSL....',
+'.....SSLCCCCLSSL....',
+'.....LLCCLLCCLL.....',
+'......LCCLLCC.......',
+'......L..LL..L......',
+'......LLLLLLLL......'],
 hana:[
-'................',
-'....LLLLLLLL....',
-'..LLHHHHHHHHLL..',
-'..LHHHHHHHHHHL..',
-'..LHHHGGGGHHHL..',
-'..LHSSSSSSSSHL..',
-'..LHSWESSWESHL..',
-'..LHSEESSEESHL..',
-'..LHSSSssSSSHL..',
-'..LHSSSSSSSSHL..',
-'..LHhSSSSSShHL..',
-'..LHhLCCCCLhHL..',
-'.LHhCCCAACCChHL.',
-'.LHhCCCAACCChHL.',
-'.LHhCCcccccChHL.',
-'..LLLCCLLCCLLL..'],
+'....................',
+'......LLLLLLLL......',
+'....LLHHHHHHHHLL....',
+'....LHHHHHHHHHHL....',
+'....LHHHGGGGHHHL....',
+'....LHSSSSSSSSHL....',
+'....LHSW.SSW.SHL....',
+'....LHS..SS..SHL....',
+'....LHSSSssSSSHL....',
+'....LHSSSSSSSSHL....',
+'....LHhSSSSSShHL....',
+'....LLLCCAACCLLL....',
+'.....LCCCAACCCL.....',
+'.....LCcCAACcCL.....',
+'.....LcLCCCCLcL.....',
+'.....LSLCCCCLSL.....',
+'......LCCLLCCL......',
+'......LCCLLCCL......',
+'......LccLLccL......',
+'......LLLL...LLLL...'],
 yui:[
-'................',
-'....LLLLLLLL....',
-'..LLHHHHHHHHLLL.',
-'..LHHHHHHHHHHHHL',
-'..LHHGGHHGGHHhHL',
-'..LHSSSSSSSSHhHL',
-'..LHSWESSWESHhHL',
-'..LHSEESSEESHhHL',
-'..LHSSSssSSSHhHL',
-'..LhSSSSSSSShHHL',
-'...LLSSSSSSLLL..',
-'.....LCCCCL.....',
-'..LLCCCAACCCLL..',
-'..LSCCCAACCCSL..',
-'..LSCCcccccCSL..',
-'...LLCCLLCCLL...'],
+'....................',
+'......LLLLLLLL......',
+'....LLHHHHHHHHLLL...',
+'....LHHHHHHHHHHHHL..',
+'....LHHGGHHGGHHhHL..',
+'....LHSSSSSSSSHhHL..',
+'....LHSWESSWESHhHL..',
+'....LHSEESSEESHhHL..',
+'....LHSSSssSSSHhHL..',
+'....LhSSSSSSSShHHL..',
+'.....LLSSSSSSLLL....',
+'.....LCCCAACCCCL....',
+'....LCCCCAACCcCCL...',
+'....LCCCCAACCcCCL...',
+'....LCC.cccccLCCL...',
+'....LSScCCCCCLSSL...',
+'.....LLCCLLCCCLL....',
+'......LCCLLCCC......',
+'.....LcccLLcccL.....',
+'......LLLL...LLLL...'],
+sora:[
+'....................',
+'....................',
+'......LHHHHHHL......',
+'.....HHHHHHHHHH.....',
+'....LHHHHHHHHHHL....',
+'....LHHSSHHHHHHL....',
+'....HHSSSHHSSHHH....',
+'....HHSWESSWEHHH....',
+'....HHSEESSEEHHH....',
+'....LHSSSssSSHHL....',
+'.....HSSSSSSSHH.....',
+'.....LLSSSSScEL.....',
+'......CCCAACCc......',
+'......CCCAACCc......',
+'.....LCcCAACcCL.....',
+'.....LcCCAACLcL.....',
+'.....LSCCCCCLSL.....',
+'......LCCLLCC.......',
+'......LLLLLLL.......',
+'.......ccLLcc.......'],
+mio:[
+'.......LLLLLL.......',
+'......LHHHHHHL......',
+'....LHHHHHHHHHHE....',
+'...LhHHHHHHHHHHhL...',
+'...HEHHHhHHHHHHEH...',
+'...HEHHhSHHhHHHEH...',
+'...HEHSSShHSShHEH...',
+'...HEHSWEShWESHEH...',
+'...hhHSEESSEESHEh...',
+'...LLHSSSssSSSHhL...',
+'....LHLSSSSSSLhh....',
+'....LHLCCAACCChh....',
+'...LhHCCCAACcChhL...',
+'...LhCCCCAACcCCLhL..',
+'....LCCcCCCCLCCL....',
+'...L.SScCCCCLSSh....',
+'.......CC.LCCL......',
+'.......CC.LCCL......',
+'......Lcc.Lccc......',
+'......hLL.hLLL......'],
 foe:[
 '................',
 '......LLLL......',
@@ -1121,6 +1175,10 @@ PAL.mio={L:'#12101a',S:'#f7d7b4',s:'#d99a72',H:'#3a3740',h:'#232227',G:'#4a4651'
 PAL.nagi={L:'#12101a',S:'#f7d7b4',s:'#d99a72',H:'#5a4570',h:'#372a45',G:'#73588f',E:'#1a1824',W:'#ffffff',C:'#7f5b31',c:'#523b1f',A:'#f0e6d2'};
 PAL.aoi={L:'#12101a',S:'#f7d7b4',s:'#d99a72',H:'#7da6cd',h:'#4d667f',G:'#a0d4ff',E:'#1a1824',W:'#ffffff',C:'#66333e',c:'#422128',A:'#f0e6d2'};
 PAL.hotaru={L:'#12101a',S:'#f7d7b4',s:'#d99a72',H:'#f0c05a',h:'#947737',G:'#fff573',E:'#1a1824',W:'#ffffff',C:'#933e28',c:'#5f281a',A:'#f0e6d2'};
+/* 시즈와 소라는 머리 하이라이트(G)가 눈 흰자(W)와 사실상 같은 흰색이다.
+   백발에게 「흰색보다 밝은 하이라이트」를 주려면 색 공간이 없으므로 이건 못 벌린다.
+   대신 생성 이미지를 되돌리는 tools/png2spr.js 가 「흰자는 눈동자 옆에만 온다」는
+   의미로 가른다. 팔레트는 손대지 않는다 — 색을 억지로 벌리면 백발이 백발이 아니게 된다. */
 PAL.shizu={L:'#12101a',S:'#f7d7b4',s:'#d99a72',H:'#e8e4e6',h:'#8f8d8e',G:'#ffffff',E:'#1a1824',W:'#ffffff',C:'#963232',c:'#612020',A:'#f0e6d2'};
 PAL.foe_rush=Object.assign({},PAL.foe,{C:'#7a4a2a',c:'#5a3520',A:'#e0ae4d'});
 PAL.foe_gun =Object.assign({},PAL.foe,{C:'#2a4a6a',c:'#1d3550',A:'#6cc2cf'});
@@ -1144,8 +1202,8 @@ const SPR_HIT=Object.keys(SPR).reduce((o,k)=>(o[k]=hitRows(SPR[k]),o),{});
    빌리고 색만 갈아끼운다. 전위는 하나, 사수는 유이, 지원은 린의 실루엣이다.
    초상화(32x32)는 아홉 장 다 실물이라 얼굴은 각자 그대로다. */
 const BODY={rin:'rin',hana:'hana',yui:'yui',
-            sora:'hana',                                   // 전위
-            mio:'yui',    nagi:'yui',                      // 사수
+            sora:'sora',                                   // 전위
+            mio:'mio',    nagi:'yui',                      // 사수
             aoi:'rin',    hotaru:'rin',  shizu:'rin'};     // 지원
 const bodyOf=k=>SPR[k]||SPR[BODY[k]]||SPR.rin;
 /* 피격 포즈. SPR_HIT 은 PAL_HIT 아래에서 SPR 로부터 만들어진다 — 여기서는 이름만 잡아 둔다. */
@@ -1909,10 +1967,17 @@ function draw(){
     const hurt=hits.has(u)&&k>.45&&k<.75;
     if(hurt&&k<.53) pal=PAL_HIT;
     if(u.hp<=0) ctx.globalAlpha=Math.max(0,1-k*1.4);
-    // 그림자
+    /* 스프라이트 크기를 칸에서 역산한다. 16×16 을 전제로 +4/+3 을 박아 두면
+       20×20 짜리를 하나라도 넣는 순간 그 캐릭터만 조용히 어긋난다.
+       가로는 가운데, 세로는 발이 칸 바닥에 닿도록 아래로 붙인다. */
+    const spr=hurt?bodyHitOf(u.key):bodyOf(u.key), sn=spr.length;
+    /* 발끝을 y=20 에 맞춘다. 그 아래 20 은 그림자, 21 은 체력 점 자리라 고정이다 —
+       바닥(24)에 붙이면 체력 점이 스프라이트를 덮는다. */
+    const ox=Math.round((CELL-sn)/2), oy=20-sn;
+    // 그림자 — 발밑에 깐다
     ctx.globalAlpha*= 1; ctx.fillStyle='rgba(0,0,0,.35)';
-    ctx.fillRect(Math.round(dx)+5,Math.round(dy)+18,14,2);
-    drawSprite(ctx,hurt?bodyHitOf(u.key):bodyOf(u.key),pal,Math.round(dx)+4,Math.round(dy)+3);
+    ctx.fillRect(Math.round(dx)+ox+1,Math.round(dy)+19,sn-2,2);
+    drawSprite(ctx,spr,pal,Math.round(dx)+ox,Math.round(dy)+oy);
     ctx.globalAlpha=1;
     // 체력 점
     if(u.hp>0){
@@ -2982,14 +3047,17 @@ window.__art=function(){
   const bad=[];
   const check=(nm,rows,n)=>rows.forEach((r,i)=>{
     if(r.length!==n) bad.push(nm+' ['+i+'] = '+r.length+'자 (기대 '+n+')'); });
-  for(const k in SPR) check('SPR.'+k,SPR[k],16);
+  /* 스프라이트 폭을 16 으로 못 박아 두었는데 아군이 20x20 이 되면서 전부 오류로 찍혔다.
+     검사의 목적은 「16 인가」가 아니라 「정사각인가」다 — 줄 수를 기준으로 폭을 잰다. */
+  for(const k in SPR) check('SPR.'+k,SPR[k],SPR[k].length);
   check('POR',POR,32); check('POR_FOE',POR_FOE,32);
   for(const k in FACE) check('FACE.'+k,FACE[k],32);
   for(const k in HAIR){ check('HAIR.'+k,HAIR[k],32);
     if(HAIR[k].length!==32) bad.push('HAIR.'+k+' 행 수 '+HAIR[k].length); }
   if(POR.length!==32) bad.push('POR 행 수 '+POR.length);
 
-  const keys=['rin','hana','yui','foe'];
+  /* 셋만 보고 있었다. 아홉이 각자 몸을 갖게 됐으므로 아홉을 다 늘어놓아야 눈으로 고칠 수 있다. */
+  const keys=ROSTER.map(r=>r.key).concat('foe');
   const box=document.createElement('div');
   box.style.cssText='padding:16px;font:13px monospace;color:'+(bad.length?'#c8455f':'#5fb7c4');
   box.textContent = bad.length ? bad.length+'건 길이 오류\n'+bad.join('\n') : '스프라이트 길이 전부 정상';
@@ -3014,7 +3082,10 @@ window.__art=function(){
   document.body.innerHTML=''; document.body.style.cssText='display:block;background:#0d0e14';
   document.body.appendChild(box);
   document.body.appendChild(mk((g,k)=>drawPortrait(g,k,0,0),32,+(param('z')||7)));   // 흉상
-  document.body.appendChild(mk((g,k)=>drawSprite(g,SPR[k],PAL[k],0,0),16,7)); // 보드용
+  /* SPR[k] 를 직접 읽으면 몸이 없는 대원에서 undefined 가 들어가 그 칸만 빈다.
+     판이 쓰는 것과 같은 bodyOf 를 써야 판과 이 화면이 어긋나지 않는다. */
+  document.body.appendChild(mk((g,k)=>drawSprite(g,bodyOf(k),PAL[k],0,0),20,7));      // 보드용
+  document.body.appendChild(mk((g,k)=>drawSprite(g,bodyHitOf(k),PAL[k],0,0),20,7));   // 피격
 };
 /* ?ui=1 — DOM 배선 점검. 시뮬레이터가 맞아도 버튼이 안 먹으면 게임은 없는 것이다.
    실제 click()으로 손패 배치 → 재정렬 → 개시 → 종료 화면까지 밟는다. */
