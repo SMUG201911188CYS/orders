@@ -1748,7 +1748,11 @@ function runTurn(s){
     ev.push({t:'switch'});
   }
   respawn(s,ev);
-  for(const u of s.units) if(u.hp>0){ u.px=u.x; u.py=u.y; }
+  /* 이전 좌표는 살아 있는 유닛만 갱신하고 있었다. 그래서 이동 중에 쓰러진 유닛은
+     px 가 옛 칸에 영영 남아, 매 턴 그 이동이 처음부터 다시 재생됐다.
+     쓰러진 사람이 계속 걸어다니며 깜빡이던 원인이다. 죽은 유닛도 자리를 따라오게 한다.
+     이 줄은 턴 시작에 돌므로, 죽는 턴의 연출 자체는 그대로 남는다. */
+  for(const u of s.units){ u.px=u.x; u.py=u.y; }
   /* 교대로 끌려간 대원은 그 자리에서 이미 읽었다. 여기서 또 읽으면 두 번 움직인다. */
   for(const u of s.units) if(u.hp>0&&u.acted!==s.turn){ u.acted=s.turn; actUnit(s,u,u.order,ev); }
   // 거점: 밟은 쪽이 가져간다. 떠나도 유지된다.
@@ -1771,7 +1775,9 @@ function runTurn(s){
   /* 회복은 이제 턴 끝 자동이 아니라 '치료' 카드가 한다.
      자동이면 지원을 데려간 것 자체가 보상이라 지시서를 어떻게 쓰든 똑같았다.
      카드로 옮기면 네 줄 중 한 줄을 치료에 내줄지가 선택이 된다. */
-  for(const u of s.units) if(u.hp<=0&&!u.gone){ u.gone=true; u.back=s.turn+2; }
+  /* deadAt 은 그리기 쪽에서 쓴다. 쓰러지는 연출은 죽은 그 턴에만 돌아야 하는데,
+     표시가 없으면 매 턴 알파가 1에서 0으로 다시 떨어져 시체가 깜빡인다. */
+  for(const u of s.units) if(u.hp<=0&&!u.gone){ u.gone=true; u.back=s.turn+2; u.deadAt=s.turn; }
 
   // 아군은 한 번 쓰러지면 그 밤은 끝이다. 비대칭이 곧 압박이다.
   if(!alive(s).some(u=>u.side==='ally')) s.over='lose';
@@ -1949,19 +1955,38 @@ function draw(){
   /* 쓰러진 아군의 자리. 구조 카드가 향하는 목표라 판에서 지워버리면
      지원이 왜 저쪽으로 걸어가는지 설명할 그림이 없다. 이미 구조된 사람은 안 그린다. */
   for(const u of st.units){
-    if(u.side!=='ally'||u.hp>0||u.rescued||anim.t<1)continue;
+    if(u.side!=='ally'||u.hp>0||u.rescued)continue;
+    /* 쓰러지는 연출이 도는 동안만 비켜 준다. 그 뒤로는 애니메이션과 무관하게 항상 그린다 —
+       예전에는 anim.t<1 이면 통째로 안 그려서, 매 턴 자리 표시가 사라졌다 나타났다 했다. */
+    if(u.deadAt===st.turn&&anim.t<1)continue;
     const [cx,cy]=cellXY(u.x,u.y);
     ctx.fillStyle=TH.deadLine;
     ctx.fillRect(cx+4,cy+13,CELL-9,4);
     ctx.fillStyle=TH.deadFill;
     ctx.fillRect(cx+5,cy+14,CELL-11,2);
-    ctx.fillRect(cx+6,cy+11,3,3);          // 머리
+    /* 머리는 그 대원의 머리색으로 찍는다. 누가 쓰러져 있는지 판에서 바로 읽힌다. */
+    ctx.fillStyle=(PAL[u.key]&&PAL[u.key].H)||TH.deadFill;
+    ctx.fillRect(cx+6,cy+11,3,3);
   }
+  /* 누가 누구를 쳤는가. 때린 쪽을 목표 쪽으로 살짝 내지르는 데 쓴다.
+     한 턴에 두 번 치는 대원(린·나기)은 마지막 목표만 남는데, 방향만 필요하므로 충분하다. */
+  const lunge=new Map(anim.ev.filter(e=>e.t==='atk').map(e=>[e.u,e.v]));
   for(const u of st.units){
-    if(u.hp<=0&&u.gone&&anim.t>=1)continue;
+    /* 쓰러진 유닛은 죽는 그 턴에만 그린다. 그 뒤로는 위의 자리 표시가 대신한다.
+       예전에는 매 턴 알파가 1에서 0으로 다시 떨어져 시체가 깜빡였다. */
+    if(u.hp<=0&&(anim.t>=1||u.deadAt!==st.turn))continue;
     const [tx,ty]=cellXY(u.x,u.y), [fx,fy]=cellXY(u.px,u.py);
     let dx=fx+(tx-fx)*ease, dy=fy+(ty-fy)*ease;
     dy += Math.sin(anim.t*Math.PI)*(u.px!==u.x||u.py!==u.y ? -1.5 : 0);
+    /* 내지르기 — 때린 쪽이 목표를 향해 3px 나갔다 돌아온다.
+       맞는 쪽만 반응하면 「누가 때렸는지」가 화면에 없다. 때린 쪽에도 동작을 준다. */
+    const at=lunge.get(u);
+    if(at&&k<.45){
+      const p=k<.22?k/.22:1-(k-.22)/.23;
+      const [ax,ay]=cellXY(u.x,u.y), [bx,by]=cellXY(at.x,at.y);
+      const L=Math.hypot(bx-ax,by-ay)||1;
+      dx+=(bx-ax)/L*3*p; dy+=(by-ay)/L*3*p;
+    }
     let pal=PAL[u.key];
     if(u.side==='foe'&&u.kind&&u.kind!=='base'&&PAL['foe_'+u.kind]) pal=PAL['foe_'+u.kind];
     /* 맞는 순간은 그 턴의 절반쯤이다. 그 구간만 피격 포즈로 바꾼다.
@@ -1990,6 +2015,55 @@ function draw(){
         ctx.fillStyle = i<u.hp ? (u.side==='ally'?TH.ally:TH.foe) : TH.hpEmpty;
         ctx.fillRect(Math.round(dx)+5+i*3,Math.round(dy)+21,2,2);
       }
+    }
+  }
+
+  /* ── 공격 표시 ──
+     맞는 쪽 연출(피격 포즈 + 흰 플래시)만 있어서 「누가 쳤는가」와 「지금 쳤다」가
+     화면에 없었다. 사거리 밖에서 쏘는 사수는 특히 아무 일도 안 일어난 것처럼 보였다.
+     유닛을 다 그린 뒤에 얹는다 — 밑에 깔면 스프라이트에 가려 안 보인다.
+
+     사선(먼 거리) → 내지르기(모든 공격, 위에서 처리) → 타격 표시 순으로 겹친다. */
+  for(const e of anim.ev){
+    if(e.t!=='atk') continue;
+    const [ax,ay]=cellXY(e.u.x,e.u.y), [bx,by]=cellXY(e.v.x,e.v.y);
+    const acx=ax+CELL/2, acy=ay+12, bcx=bx+CELL/2, bcy=by+12;
+    const col = e.u.side==='ally'?TH.ally:TH.foe;
+
+    /* 사선 — 두 칸 이상 떨어져 있을 때만. 붙어서 치는데 선을 그으면 지저분하다.
+       점선으로 끊어 그린다. 실선은 이 해상도에서 판의 격자선과 섞인다. */
+    if(md(e.u,e.v)>1&&k<.5){
+      const g=k<.25?1:1-(k-.25)/.25;
+      ctx.globalAlpha=.85*g; ctx.fillStyle=col;
+      const dist=Math.hypot(bcx-acx,bcy-acy), step=3;
+      for(let d=6;d<dist-5;d+=step*2){
+        ctx.fillRect(Math.round(acx+(bcx-acx)*d/dist),
+                     Math.round(acy+(bcy-acy)*d/dist),2,2);
+      }
+      ctx.globalAlpha=1;
+    }
+
+    /* 타격 자국 — 맞은 순간(피격 포즈와 같은 구간)에 그어진다.
+       처음엔 목표를 중심으로 링을 그렸는데, 칸이 24px 이라 작은 반경은 실루엣 안에
+       갇혀서 얼굴 위 잡티로 보였다. 반경을 키우면 옆 칸까지 넘어간다.
+
+       그래서 대칭 링을 버리고 「맞은 면」에 긋는다. 공격자 쪽으로 7px 나간 지점이
+       접촉점이고, 거기에 타격 방향과 직각으로 짧은 막대를 그어 늘린다.
+       얼굴을 덮지 않으면서 어느 쪽에서 맞았는지까지 읽힌다. */
+    const h=(k-.45)/.28;
+    if(h>=0&&h<=1){
+      const vx=acx-bcx, vy=acy-bcy, L=Math.hypot(vx,vy)||1;
+      const ux=vx/L, uy=vy/L;                       // 목표에서 공격자를 향하는 단위 벡터
+      const px0=bcx+ux*7, py0=bcy+uy*7;
+      ctx.globalAlpha=1-h*h; ctx.fillStyle=col;     // 처음엔 또렷하고 끝에서 빠르게 사라진다
+      const len=3+h*6;
+      for(let s=-len;s<=len;s+=1)
+        ctx.fillRect(Math.round(px0-uy*s),Math.round(py0+ux*s),2,2);
+      /* 파편 둘 — 맞은 방향으로 튕겨 나간다. 막대만 있으면 정적인 표시로 보인다. */
+      const fly=4+h*8;
+      ctx.fillRect(Math.round(px0-ux*fly-uy*fly*.5),Math.round(py0-uy*fly+ux*fly*.5),2,2);
+      ctx.fillRect(Math.round(px0-ux*fly+uy*fly*.5),Math.round(py0-uy*fly-ux*fly*.5),2,2);
+      ctx.globalAlpha=1;
     }
   }
 }
