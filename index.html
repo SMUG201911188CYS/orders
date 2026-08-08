@@ -1127,6 +1127,16 @@ PAL.foe_gun =Object.assign({},PAL.foe,{C:'#2a4a6a',c:'#1d3550',A:'#6cc2cf'});
 PAL.foe_hulk=Object.assign({},PAL.foe,{C:'#4a2a4a',c:'#331d33',A:'#c98ad6'});
 const PAL_HIT = new Proxy({},{get:()=>'#ffffff'});
 
+/* 피격 스프라이트 — 색만 흰색으로 덮던 것을 포즈 교체로 바꾼다 (2026-08-08).
+   흰색 플래시는 "무언가 일어났다"는 신호일 뿐 "맞았다"를 그리지 않는다.
+
+   원본에서 기계적으로 만든다. 손으로 네 벌을 다시 찍으면 원본이 바뀔 때 조용히 어긋난다.
+     흰자(W)를 지운다  → 눈이 아랫줄에만 남아 감은 눈이 된다
+     한 칸 위로 올린다  → 충격에 튀어오른 것으로 읽힌다. 바닥 한 줄이 빈다 */
+const hitRows=rows=>rows.slice(1).map(r=>r.replace(/W/g,'S'))
+  .concat(['.'.repeat(rows[0].length)]);
+const SPR_HIT=Object.keys(SPR).reduce((o,k)=>(o[k]=hitRows(SPR[k]),o),{});
+
 /* 보드용 16x16 몸통은 셋만 그려져 있는데 편성 화면은 아홉을 고르게 한다.
    나머지 여섯을 내보내면 drawSprite 에 undefined 가 들어가 예외가 나고
    그 대원만 판에서 사라졌다 — 기본 편성으로만 검사해 와서 안 보이던 버그다.
@@ -1138,6 +1148,8 @@ const BODY={rin:'rin',hana:'hana',yui:'yui',
             mio:'yui',    nagi:'yui',                      // 사수
             aoi:'rin',    hotaru:'rin',  shizu:'rin'};     // 지원
 const bodyOf=k=>SPR[k]||SPR[BODY[k]]||SPR.rin;
+/* 피격 포즈. SPR_HIT 은 PAL_HIT 아래에서 SPR 로부터 만들어진다 — 여기서는 이름만 잡아 둔다. */
+const bodyHitOf=k=>SPR_HIT[k]||SPR_HIT[BODY[k]]||SPR_HIT.rin;
 
 function drawSprite(ctx,rows,pal,ox,oy){
   for(let y=0;y<rows.length;y++){
@@ -1889,12 +1901,18 @@ function draw(){
     dy += Math.sin(anim.t*Math.PI)*(u.px!==u.x||u.py!==u.y ? -1.5 : 0);
     let pal=PAL[u.key];
     if(u.side==='foe'&&u.kind&&u.kind!=='base'&&PAL['foe_'+u.kind]) pal=PAL['foe_'+u.kind];
-    if(hits.has(u)&&k>.45&&k<.75) pal=PAL_HIT;
+    /* 맞는 순간은 그 턴의 절반쯤이다. 그 구간만 피격 포즈로 바꾼다.
+       포즈는 「맞았다」를 그리지만 신호가 약하다 — 0.42초 중 0.13초만 나오고
+       한 칸 위로 올라간 것은 나란히 놓아야 보인다.
+       그래서 구간 앞머리에만 흰색을 얹는다. 색이 통째로 바뀌면 절대 못 놓친다.
+       0.03초(약 2프레임)면 눈에 띄되 번쩍이지 않는다. */
+    const hurt=hits.has(u)&&k>.45&&k<.75;
+    if(hurt&&k<.53) pal=PAL_HIT;
     if(u.hp<=0) ctx.globalAlpha=Math.max(0,1-k*1.4);
     // 그림자
     ctx.globalAlpha*= 1; ctx.fillStyle='rgba(0,0,0,.35)';
     ctx.fillRect(Math.round(dx)+5,Math.round(dy)+18,14,2);
-    drawSprite(ctx,bodyOf(u.key),pal,Math.round(dx)+4,Math.round(dy)+3);
+    drawSprite(ctx,hurt?bodyHitOf(u.key):bodyOf(u.key),pal,Math.round(dx)+4,Math.round(dy)+3);
     ctx.globalAlpha=1;
     // 체력 점
     if(u.hp>0){
