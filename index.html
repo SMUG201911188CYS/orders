@@ -2099,6 +2099,7 @@ function nextTurn(){
   if(!st||st.over)return;
   const ev=runTurn(st);
   anim.ev=ev; anim.t=0; anim.playing=true; anim.last=0;   // 첫 프레임에서 rAF 시계로 잡는다
+  turnSfx(ev);                                            // 소리는 그림과 같은 시각에 맞춘다
   logTurn(ev); paintScores(); paintSquad(); paintFoe(); paintSlots(ev);
 }
 
@@ -2576,6 +2577,8 @@ function loadStage(i,keep){
 
 function finish(){
   const won=st.over==='win';
+  /* 배너가 뜨는 것과 같이 낸다. 살짝 늦추는 이유는 마지막 턴의 타격음과 겹치지 않게 하려는 것이다. */
+  sfx(won?'win':'lose',.2);
   stash(); carried=orders.map(o=>o.slice());
   const last = stageIdx>=STAGES.length-1;
   $('bt').textContent = won?(last?'밤이 끝났다':'교대 완료'):'무너졌다';
@@ -2872,7 +2875,30 @@ const SND={
   master:.6,
   click:{hi:1180,lo:520,len:.045,vol:.26},
   start:{hi:520,lo:990,len:.12,vol:.3},
-  bgm:{root:55,vol:.2,fade:3,gap:[4.5,9.5],steps:[0,3,5,7,10,12,15],air:.05}
+  bgm:{root:55,vol:.2,fade:3,gap:[4.5,9.5],steps:[0,3,5,7,10,12,15],air:.05},
+  /* ── 판 위 사건 소리 ──
+     어디에 붙일지는 실측으로 골랐다(21,369턴). 턴당 발생량이 기준이다.
+       이동 2.35회 · 대기 1.09회 · 제자리 0.78회 → 소리를 달면 그 자체가 소음이다
+       공격 0.45 · 점령 0.25 · 쓰러짐 0.13 · 교체 0.04 → 사건으로 들린다
+     치료·구조·속박은 이 측정에 아예 안 나온다. 기본 편성에 지원이 없어서다.
+     편성에 따라서만 나는 희귀 사건이라 안전하다. */
+  sfx:{
+    atk :{type:'square',  hi:340,lo:120,len:.09,vol:.30},   // 근접 타격
+    shot:{type:'sawtooth',hi:900,lo:260,len:.11,vol:.22},   // 두 칸 이상, 발사
+    die :{type:'triangle',hi:220,lo:55, len:.45,vol:.26},   // 길게 떨어진다
+    cap :[{type:'triangle',hi:440,lo:440,len:.09,vol:.22},
+          {type:'triangle',hi:660,lo:660,len:.14,vol:.22,at:.09}],
+    heal:[{type:'sine',hi:520,lo:520,len:.13,vol:.20},
+          {type:'sine',hi:784,lo:784,len:.20,vol:.18,at:.11}],
+    swch:[{type:'square',hi:300,lo:300,len:.10,vol:.24},
+          {type:'square',hi:225,lo:225,len:.22,vol:.24,at:.13}],
+    win :[{type:'triangle',hi:523,lo:523,len:.12,vol:.24},
+          {type:'triangle',hi:659,lo:659,len:.12,vol:.24,at:.12},
+          {type:'triangle',hi:784,lo:784,len:.34,vol:.26,at:.24}],
+    lose:[{type:'triangle',hi:196,lo:196,len:.18,vol:.26},
+          {type:'triangle',hi:147,lo:147,len:.55,vol:.26,at:.18}]
+  },
+  maxSame:2                      // 한 턴에 같은 소리는 두 번까지. 나머지는 버린다
 };
 
 let AC=null,BUS=null,BGM=null,bgmTimer=0;
@@ -2891,11 +2917,12 @@ function ac(make){
 
 /* 짧은 발음 하나. 주파수를 hi 에서 lo 로 미끄러뜨리면 「딸깍」이 되고,
    반대로 올리면 「시작」처럼 들린다. 클릭과 개시가 같은 함수를 쓴다. */
-function blip(p){
+function blip(p,delay){
   const c=ac(false); if(!c||!SND.on) return;
   if(c.state==='suspended') c.resume();
-  const t=c.currentTime, o=c.createOscillator(), g=c.createGain();
-  o.type='square';
+  const t=c.currentTime+(delay||0)+(p.at||0);
+  const o=c.createOscillator(), g=c.createGain();
+  o.type=p.type||'square';
   o.frequency.setValueAtTime(p.hi,t);
   o.frequency.exponentialRampToValueAtTime(p.lo,t+p.len);
   g.gain.setValueAtTime(.0001,t);
@@ -2903,6 +2930,36 @@ function blip(p){
   g.gain.exponentialRampToValueAtTime(.0001,t+p.len);
   o.connect(g); g.connect(BUS);
   o.start(t); o.stop(t+p.len+.02);
+}
+
+/* 이름 하나로 낸다. 배열이면 이어 붙인 소리이고, 각 조각의 at 이 그 안에서의 시각이다. */
+function sfx(name,delay){
+  const p=SND.sfx[name]; if(!p) return;
+  if(Array.isArray(p)) for(const q of p) blip(q,delay);
+  else blip(p,delay);
+}
+
+/* 그 턴의 사건 소리를 한꺼번에 예약한다.
+
+   타격음은 화면에서 맞는 순간(k≈.45)에 맞춰 늦춘다. 턴 시작에 내면 그림보다 먼저 들려
+   무엇 때문에 난 소리인지 연결되지 않는다. anim.dur 을 곱하므로 2배속에서도 맞는다.
+
+   같은 소리가 한 턴에 여러 번이면 앞의 둘만 낸다. 린은 한 턴에 두 번 치고 허상도
+   같이 치므로 그대로 두면 네 발이 한 점에 겹쳐 소리가 뭉개진다. 둘째는 60ms 밀어 낸다. */
+function turnSfx(ev){
+  if(!SND.on||!ac(false)) return;
+  const n={}, hit=.45*anim.dur;
+  const take=k=>((n[k]=(n[k]||0)+1)<=SND.maxSame);
+  for(const e of ev){
+    if(e.t==='atk'){
+      const k=md(e.u,e.v)>1?'shot':'atk';
+      if(take(k)) sfx(k,hit+(n[k]-1)*.06);
+    }
+    else if(e.t==='die'){ if(take('die')) sfx('die',hit); }
+    else if(e.t==='cap'){ if(take('cap')) sfx('cap',0); }
+    else if(e.t==='heal'||e.t==='rescue'){ if(take('heal')) sfx('heal',0); }
+    else if(e.t==='switch'){ sfx('swch',0); }
+  }
 }
 
 /* 배경음 — 낮은 드론 둘 + 아주 옅은 바람소리 + 드문드문 떨어지는 음.
