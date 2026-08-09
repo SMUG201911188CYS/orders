@@ -4,9 +4,11 @@ NHN NAN 2026 게임 × AI 해커톤 사전 과제 · 1인 제작
 
 **직접 조종할 수 없는 부대에게, 우선순위가 매겨진 지시서 한 장만 내려보내는 전술 퍼즐입니다.**
 
-▶ **[지금 플레이](https://smug201911188cys.github.io/orders/)** · 설치와 로그인이 필요하지 않습니다
-📘 **[게임 소개서](https://smug201911188cys.github.io/orders/concept.html)** · 게임 개요와 플레이 방법, 실행 방법
-📄 **[AI 활용 기술 문서](AI-USAGE.md)** · 사용한 AI 도구와 프롬프트, 활용 내역
+| | |
+|---|---|
+| ▶ **[지금 플레이](https://smug201911188cys.github.io/orders/)** | 설치와 로그인이 필요하지 않습니다 |
+| 📘 **[게임 소개서](https://smug201911188cys.github.io/orders/concept.html)** | 게임 개요와 플레이 방법, 실행 방법 |
+| 📄 **[AI 활용 기술 문서](AI-USAGE.md)** | 사용한 AI 도구와 프롬프트, 활용 내역 |
 
 ---
 
